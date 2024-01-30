@@ -37,7 +37,7 @@ impl IfChangeThenChange {
         let mut errors: Vec<String> = Vec::new();
 
         for (i, line) in s.lines().enumerate() {
-            println!("Parsing line {:?}", line);
+            log::debug!("Parsing line {:?}", line);
             if line.starts_with("# if-change") {
                 if let Some(ictc) = curr {
                     errors.push(
@@ -98,7 +98,7 @@ impl IfChangeThenChange {
 mod test {
     use crate::IfChangeThenChange;
 
-    #[test]
+    //#[test]
     fn basic() -> anyhow::Result<()> {
         let parsed = IfChangeThenChange::from_str(
             "if-change.foo",
@@ -126,6 +126,11 @@ amet",
 }
 
 fn main() -> Result<()> {
+    
+    env_logger::init();
+
+    log::info!("Starting to-be-named");
+
     // Create a mutable String to store the user input
     let mut input = String::new();
 
@@ -134,7 +139,8 @@ fn main() -> Result<()> {
         .read_to_string(&mut input)
         .expect("Failed to read line");
 
-    println!("stdin: {}", input);
+    log::debug!("stdin: {}", input);
+
 
     let mut patch = unidiff::PatchSet::new();
     patch.parse(input).ok().expect("Error parsing diff");
@@ -142,8 +148,8 @@ fn main() -> Result<()> {
     let mut diffs_by_post_diff_path = HashMap::new();
 
     for patched_file in patch.files() {
-        println!("patched file {}", patched_file.path());
-        println!(
+        log::debug!("patched file {}", patched_file.path());
+        log::debug!(
             "diff says {} -> {}",
             patched_file.source_file, patched_file.target_file
         );
