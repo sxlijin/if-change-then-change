@@ -1,10 +1,13 @@
+use anyhow::Result;
+use std::collections::HashMap;
 use std::io::Read;
 use std::ops::Range;
-use anyhow::Result;
 
 #[derive(Debug, PartialEq, Eq)]
 struct IfChangeThenChange {
-    if_change: (String, Range<usize>),
+    path: String,
+    block_name: String,
+    if_change: Range<usize>,
     then_change: Vec<String>,
 }
 
@@ -14,7 +17,6 @@ struct IfChangeThenChange {
 // lorem ipsum dolor
 // sit amet
 // then-change a/b/c.rs
-
 
 // multi-file format
 // ---
@@ -34,27 +36,32 @@ impl IfChangeThenChange {
         let mut curr: Option<IfChangeThenChange> = None;
         let mut errors: Vec<String> = Vec::new();
 
-
-        for (i, line ) in s.lines().enumerate() {
+        for (i, line) in s.lines().enumerate() {
             println!("Parsing line {:?}", line);
-            if line.starts_with("// if-change") {
+            if line.starts_with("# if-change") {
                 if let Some(ictc) = curr {
-                    errors.push(format!("invalid if-change block starting on {:?}", ictc.if_change).to_string());
+                    errors.push(
+                        format!("invalid if-change block starting on {:?}", ictc.if_change)
+                            .to_string(),
+                    );
                 }
                 curr = Some(IfChangeThenChange {
-                    if_change: (path.to_string(), i..i),
+                    path: path.to_string(),
+                    // DO NOT LAND- block name is not being parsed out right now
+                    block_name: "".to_string(),
+                    if_change: i..i,
                     then_change: vec![],
                 });
-
-            } else if line.starts_with("// then-change") {
+            } else if line.starts_with("# then-change") {
                 if let Some(mut ictc) = curr {
-                    let if_change_range = ictc.if_change.1;
-                    ictc.if_change.1 = if_change_range.start..i;
+                    let if_change_range = ictc.if_change;
+                    ictc.if_change = if_change_range.start..i;
 
                     // if this line is "then-change $filename"
-                    if line.starts_with("// then-change ") {
+                    if line.starts_with("# then-change ") {
                         // NB: little bit of a hack
-                        ictc.then_change.push((&line["// then-change ".len()..]).to_string());
+                        ictc.then_change
+                            .push((&line["# then-change ".len()..]).to_string());
                         ret.push(ictc);
                         curr = None;
                     } else {
@@ -65,21 +72,25 @@ impl IfChangeThenChange {
                 } else {
                     errors.push("no if-change preceding this then-change".to_string());
                 }
-            } else if line.starts_with("// fi-change") {
+            } else if line.starts_with("# fi-change") {
                 match curr {
                     Some(ictc) => ret.push(ictc),
-                    None => errors.push("fi-change found on line ??? but does not match a preceding then-change".to_string()),
+                    None => errors.push(
+                        "fi-change found on line ??? but does not match a preceding then-change"
+                            .to_string(),
+                    ),
                 }
                 curr = None;
             } else {
                 if let Some(ictc) = &mut curr {
-                    if !ictc.if_change.1.is_empty() {
-                    ictc.then_change.push(line.to_string());
+                    if !ictc.if_change.is_empty() {
+                        ictc.then_change.push(line.to_string());
                     }
                 }
             }
         }
 
+        // DO NOT LAND- throw if errors is non-empty
         ret
     }
 }
@@ -89,45 +100,83 @@ mod test {
 
     #[test]
     fn basic() -> anyhow::Result<()> {
-        let parsed = IfChangeThenChange::from_str("if-change.foo", "\
+        let parsed = IfChangeThenChange::from_str(
+            "if-change.foo",
+            "\
 lorem
 // if-change
 ipsum
 dolor
 sit
 // then-change then-change.foo
-amet");
-        assert_eq!(parsed, vec![IfChangeThenChange {
-            if_change: ("if-change.foo".to_string(), 1..5),
-            then_change: vec!["then-change.foo".to_string()],
-
-        }]);
+amet",
+        );
+        assert_eq!(
+            parsed,
+            vec![IfChangeThenChange {
+                path: "if-change.foo".to_string(),
+                block_name: "".to_string(),
+                if_change: 1..5,
+                then_change: vec!["then-change.foo".to_string()],
+            }]
+        );
 
         Ok(())
     }
 }
 
 fn main() -> Result<()> {
-
     // Create a mutable String to store the user input
     let mut input = String::new();
 
-
     // Read a line from stdin and store it in the 'input' String
-    std::io::stdin().read_to_string(&mut input)
+    std::io::stdin()
+        .read_to_string(&mut input)
         .expect("Failed to read line");
 
     println!("stdin: {}", input);
 
-    
     let mut patch = unidiff::PatchSet::new();
     patch.parse(input).ok().expect("Error parsing diff");
 
-    for patched_file in patch {
+    let mut diffs_by_post_diff_path = HashMap::new();
+
+    for patched_file in patch.files() {
         println!("patched file {}", patched_file.path());
-        println!("diff says {} -> {}", patched_file.source_file, patched_file.target_file);
+        println!(
+            "diff says {} -> {}",
+            patched_file.source_file, patched_file.target_file
+        );
+        diffs_by_post_diff_path.insert(patched_file.target_file.clone(), patched_file);
+    }
+
+    let mut ictc_blocks_by_path = HashMap::new();
+
+    for post_diff_path in diffs_by_post_diff_path.keys() {
+        let actual_path = post_diff_path.replace("b/", "");
+        ictc_blocks_by_path.insert(
+            actual_path.clone(),
+            IfChangeThenChange::from_str(&actual_path, &std::fs::read_to_string(&actual_path)?),
+        );
+    }
+
+    let ictc_blocks_by_path = ictc_blocks_by_path;
+
+    let mut diagnostics = Vec::new();
+
+    for (ifchange_path, ictc_blocks ) in ictc_blocks_by_path {
+        for ictc_block in ictc_blocks {
+            for then_change_path in ictc_block.then_change {
+                // DO NOT LAND- need to actually compute intersection of diff and ictc blocks
+                diagnostics.push(format!("{}:{} - expected change in this file, b/c there was a change in {}", 
+                    then_change_path, 0, ifchange_path))
+            }
+        }
+    }
+
+    for diagnostic in diagnostics {
+        println!("diagnostic: {}", diagnostic);
     }
 
     Ok(())
 }
-
