@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::anyhow;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
@@ -37,8 +37,8 @@ pub struct IfChangeThenChange {
 
 impl IfChangeThenChange {
     // TODO: errors should hand back meaningful diagnostics about the malformed ictc
-    pub fn from_str(path: &str, s: &str) -> Vec<IfChangeThenChange> {
-        let mut ret: Vec<IfChangeThenChange> = Vec::new();
+    pub fn from_str(path: &str, s: &str) -> HashMap<String, IfChangeThenChange> {
+        let mut ret = HashMap::new();
         let mut curr: Option<IfChangeThenChange> = None;
         let mut errors: Vec<String> = Vec::new();
 
@@ -73,7 +73,7 @@ impl IfChangeThenChange {
                             // TODO- implement block name parsing
                             block_name: "".to_string(),
                         });
-                        ret.push(ictc);
+                        ret.insert(ictc.key.block_name.clone(), ictc);
                         curr = None;
                     } else {
                         curr = Some(ictc);
@@ -85,7 +85,9 @@ impl IfChangeThenChange {
                 }
             } else if line.starts_with("# fi-change") {
                 match curr {
-                    Some(ictc) => ret.push(ictc),
+                    Some(ictc) => {
+                        ret.insert(ictc.key.block_name.clone(), ictc);
+                    },
                     None => errors.push(
                         "fi-change found on line ??? but does not match a preceding then-change"
                             .to_string(),
@@ -111,6 +113,7 @@ impl IfChangeThenChange {
 }
 
 mod test {
+    use anyhow::anyhow;
     use crate::if_change_then_change::{BlockKey, IfChangeThenChange};
 
     //#[test]
@@ -126,9 +129,10 @@ sit
 // then-change then-change.foo
 amet",
         );
+        assert_eq!(parsed.len(), 1);
         assert_eq!(
-            parsed,
-            vec![IfChangeThenChange {
+            *parsed.get("").ok_or(anyhow!("Did not parse an if-change-then-change block"))?,
+            IfChangeThenChange {
                 key: BlockKey {
                     path: "if-change.foo".to_string(),
                     block_name: "".to_string(),
@@ -138,7 +142,7 @@ amet",
                     path: "then-change.foo".to_string(),
                     block_name: "".to_string(),
                 }],
-            }]
+            }
         );
 
         Ok(())

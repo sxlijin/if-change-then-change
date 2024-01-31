@@ -66,7 +66,7 @@ fn run() -> Result<()> {
     let mut diagnostics = Vec::new();
 
     for (ifchange_path, ictc_blocks) in ictc_blocks_by_path {
-        for ictc_block in ictc_blocks {
+        for (_, ictc_block) in ictc_blocks {
             for then_change_key in ictc_block.then_change {
                 // DO NOT LAND- need to actually compute intersection of diff and ictc blocks
                 diagnostics.push(Diagnostic {
