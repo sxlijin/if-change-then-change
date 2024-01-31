@@ -86,7 +86,6 @@ tests/data/basic/b.sh:4 - expected change here due to if-change in tests/data/ba
 }
 
 #[test]
-#[ignore]
 fn one_changed_in_if_change_other_missing_if_change() -> anyhow::Result<()> {
     // c.sh changed in if-change, then-change points at d.sh
     // d.sh does not contain an if-change-then-change block
@@ -95,11 +94,13 @@ fn one_changed_in_if_change_other_missing_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-d.sh:0 - expected if-change-then-change in this file due to if-change in tests/data/basic/a.sh
-d.sh:1,4 - expected change here due to if-change in tests/data/basic/a.sh
+tests/data/basic/d.sh - expected if-change-then-change in this file due to if-change in tests/data/basic/c.sh
+tests/data/basic/d.sh - expected change here due to if-change in tests/data/basic/c.sh
 "
     );
     assert_eq!(run.exit_code, 0);
 
     Ok(())
 }
+
+// TODO- need tests for when thenchange references a file that does not exist

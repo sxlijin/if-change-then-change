@@ -53,8 +53,11 @@ impl IfChangeThenChange {
             if line.starts_with("# if-change") {
                 if let Some(ictc) = curr {
                     errors.push(
-                        format!("invalid if-change block starting on {:?}", ictc.content_range)
-                            .to_string(),
+                        format!(
+                            "invalid if-change block starting on {:?}",
+                            ictc.content_range
+                        )
+                        .to_string(),
                     );
                 }
                 curr = Some(IfChangeThenChange {

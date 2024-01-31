@@ -18,25 +18,25 @@ struct Diagnostic {
 
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let line_position = {
-            if let Some(Range { start: start_line, end: end_line }) = self.lines {
+        let path_and_lineno = {
+            if let Some(Range {
+                start: start_line,
+                end: end_line,
+            }) = self.lines
+            {
                 // We _could_ just always do a.sh:4-4 when the line range only consists of one line, but
                 // a.sh:4 is much more readable; GH permalinks are a good example of the prior art here
                 if start_line + 1 == end_line {
-                    (start_line + 1).to_string()
+                    format!("{}:{}", self.path, start_line + 1)
                 } else {
-                    format!("{}-{}", start_line + 1, end_line)
+                    format!("{}:{}-{}", self.path, start_line + 1, end_line)
                 }
             } else {
-                "0".to_string()
+                self.path.clone()
             }
         };
 
-        write!(
-            f,
-            "{}:{} - {}",
-            self.path, line_position, self.message
-        )
+        write!(f, "{} - {}", path_and_lineno, self.message)
     }
 }
 
@@ -93,11 +93,10 @@ fn run() -> Result<()> {
         let mut then_change_paths = Vec::new();
 
         for path in diffs_by_post_diff_path.keys() {
-            let ictc_by_block_name = 
-                if_change_then_change::IfChangeThenChange::from_str(
-                    path,
-                    &std::fs::read_to_string(path)?,
-                );
+            let ictc_by_block_name = if_change_then_change::IfChangeThenChange::from_str(
+                path,
+                &std::fs::read_to_string(path)?,
+            );
             for ictc in ictc_by_block_name.values() {
                 for then_change_key in ictc.then_change.iter() {
                     if !diffs_by_post_diff_path.contains_key(&then_change_key.path) {
@@ -105,22 +104,15 @@ fn run() -> Result<()> {
                     }
                 }
             }
-            ictc_by_block_name_by_path.insert(
-                path.clone(),
-                ictc_by_block_name,
-            );
+            ictc_by_block_name_by_path.insert(path.clone(), ictc_by_block_name);
         }
 
         for path in then_change_paths {
-            let ictc_by_block_name = 
-                if_change_then_change::IfChangeThenChange::from_str(
-                    &path,
-                    &std::fs::read_to_string(&path)?,
-                );
-            ictc_by_block_name_by_path.insert(
-                path,
-                ictc_by_block_name,
+            let ictc_by_block_name = if_change_then_change::IfChangeThenChange::from_str(
+                &path,
+                &std::fs::read_to_string(&path)?,
             );
+            ictc_by_block_name_by_path.insert(path, ictc_by_block_name);
         }
 
         ictc_by_block_name_by_path
@@ -142,7 +134,7 @@ fn run() -> Result<()> {
                         // TODO- is this 1-indexed or 0-indexed lineno? might be 1-indexed
                         // TODO- is this algo sound? are there ways that can break this approach w in_ictc_block?
                         if let Some(lineno) = line.target_line_no {
-                            in_ictc_block = ictc_block.content_range.contains(&(lineno-1));
+                            in_ictc_block = ictc_block.content_range.contains(&(lineno - 1));
                         }
                         if in_ictc_block && (line.is_added() || line.is_removed()) {
                             modified_blocks_by_key.insert(ictc_block.key.clone());
@@ -175,7 +167,8 @@ fn run() -> Result<()> {
                     }
 
                     let mut block_range = None;
-                    if let Some(ictc_blocks) = ictc_by_block_name_by_path.get(&then_change_key.path) {
+                    if let Some(ictc_blocks) = ictc_by_block_name_by_path.get(&then_change_key.path)
+                    {
                         if let Some(ictc_block) = ictc_blocks.get(&then_change_key.block_name) {
                             block_range = Some(ictc_block.content_range.clone());
                         }
