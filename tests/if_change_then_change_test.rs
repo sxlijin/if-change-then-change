@@ -7,7 +7,7 @@ fn both_changed_both_added_lines_in_if_change() -> anyhow::Result<()> {
     // both a.sh and b.sh changed
     //   a.sh and b.sh contain if-change-then-change
     //   a.sh and b.sh changed in if-change block
-    let run = framework::run_tool("tests/data/basic/both-changed-both-in-if-change.diff")?;
+    let run = framework::run_tool("tests/data/basic/both-changed-both-added-lines-in-if-change.diff")?;
 
     assert_eq!(run.stdout, "\n");
     assert_eq!(run.exit_code, 0);
@@ -19,7 +19,7 @@ fn both_changed_both_removed_lines_in_if_change() -> anyhow::Result<()> {
     // both a.sh and b.sh changed
     //   a.sh and b.sh contain if-change-then-change
     //   a.sh and b.sh changed in if-change block
-    let run = framework::run_tool("tests/data/basic/both-changed-both-in-if-change.diff")?;
+    let run = framework::run_tool("tests/data/basic/both-changed-both-removed-lines-in-if-change.diff")?;
 
     assert_eq!(run.stdout, "\n");
     assert_eq!(run.exit_code, 0);
@@ -35,9 +35,12 @@ fn both_changed_one_in_if_change() -> anyhow::Result<()> {
     //   b.sh changed outside if-change block
     let run = framework::run_tool("tests/data/basic/both-changed-one-in-if-change.diff")?;
 
-    assert_eq!(run.stdout, "\
+    assert_eq!(
+        run.stdout,
+        "\
 b.sh:4,4 - expected change here due to if-change in tests/data/basic/a.sh
-");
+"
+    );
     assert_eq!(run.exit_code, 0);
 
     Ok(())
@@ -51,9 +54,12 @@ fn both_changed_one_missing_if_change() -> anyhow::Result<()> {
     //   d.sh does not contain an if-change-then-change block
     let run = framework::run_tool("tests/data/basic/both-changed-one-missing-if-change.diff")?;
 
-    assert_eq!(run.stdout, "\
+    assert_eq!(
+        run.stdout,
+        "\
 d.sh:0 - expected if-change-then-change in this file due to if-change in tests/data/basic/a.sh
-");
+"
+    );
     assert_eq!(run.exit_code, 0);
 
     Ok(())
@@ -65,9 +71,12 @@ fn one_changed_in_if_change() -> anyhow::Result<()> {
     // b.sh contains an if-change-then-change pointing back at a.sh
     let run = framework::run_tool("tests/data/basic/one-changed-in-if-change.diff")?;
 
-    assert_eq!(run.stdout, "\
+    assert_eq!(
+        run.stdout,
+        "\
 b.sh:0 - expected if-change-then-change in this file due to if-change in tests/data/basic/a.sh
-");
+"
+    );
     assert_eq!(run.exit_code, 0);
 
     Ok(())
@@ -79,10 +88,13 @@ fn one_changed_in_if_change_other_missing_if_change() -> anyhow::Result<()> {
     // d.sh does not contain an if-change-then-change block
     let run = framework::run_tool("tests/data/basic/one-changed-other-missing-if-change.diff")?;
 
-    assert_eq!(run.stdout, "\
+    assert_eq!(
+        run.stdout,
+        "\
 d.sh:0 - expected if-change-then-change in this file due to if-change in tests/data/basic/a.sh
 d.sh:1,4 - expected change here due to if-change in tests/data/basic/a.sh
-");
+"
+    );
     assert_eq!(run.exit_code, 0);
 
     Ok(())

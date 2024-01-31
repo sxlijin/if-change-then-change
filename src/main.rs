@@ -1,6 +1,6 @@
 use anyhow::Result;
-use std::fmt;
 use std::collections::HashMap;
+use std::fmt;
 use std::io::Read;
 use std::ops::Range;
 
@@ -96,6 +96,9 @@ impl IfChangeThenChange {
     }
 }
 
+// Diagnostics should always be tied to the location where we want the user to
+// make a change, i.e. if a.sh contains a "if change ... then change b.sh", a.sh
+// has been changed but b.sh has not, then the diagnostic should be tied to b.sh.
 struct Diagnostic {
     path: String,
     // 0-indexed, inclusive
@@ -105,10 +108,13 @@ struct Diagnostic {
     message: String,
 }
 
-
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}-{} - {}", self.path, self.start_line, self.end_line, self.message)
+        write!(
+            f,
+            "{}:{}-{} - {}",
+            self.path, self.start_line, self.end_line, self.message
+        )
     }
 }
 
@@ -153,20 +159,14 @@ fn run() -> Result<()> {
 
     log::debug!("stdin: {}", input);
 
-
     let mut patch = unidiff::PatchSet::new();
     patch.parse(input).ok().expect("Error parsing diff");
 
-    let mut diffs_by_post_diff_path = HashMap::new();
-
-    for patched_file in patch.files() {
-        log::debug!("patched file {}", patched_file.path());
-        log::debug!(
-            "diff says {} -> {}",
-            patched_file.source_file, patched_file.target_file
-        );
-        diffs_by_post_diff_path.insert(patched_file.target_file.clone(), patched_file);
-    }
+    let diffs_by_post_diff_path = patch
+        .files()
+        .iter()
+        .map(|patched_file| (patched_file.target_file.clone(), patched_file))
+        .collect::<HashMap<String, &unidiff::PatchedFile>>();
 
     let mut ictc_blocks_by_path = HashMap::new();
 
@@ -182,7 +182,7 @@ fn run() -> Result<()> {
 
     let mut diagnostics = Vec::new();
 
-    for (ifchange_path, ictc_blocks ) in ictc_blocks_by_path {
+    for (ifchange_path, ictc_blocks) in ictc_blocks_by_path {
         for ictc_block in ictc_blocks {
             for then_change_path in ictc_block.then_change {
                 // DO NOT LAND- need to actually compute intersection of diff and ictc blocks

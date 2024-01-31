@@ -23,6 +23,9 @@ pub fn run_tool(data_path: &str) -> anyhow::Result<ToolOutput> {
 
     return Ok(ToolOutput {
         stdout: String::from_utf8(output.stdout)?,
-        exit_code: output.status.code().ok_or(anyhow!("No exit code - process was cancelled, maybe?"))?,
+        exit_code: output
+            .status
+            .code()
+            .ok_or(anyhow!("No exit code - process was cancelled, maybe?"))?,
     });
 }
