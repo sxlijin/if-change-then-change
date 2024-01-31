@@ -1,7 +1,6 @@
 use assert_cmd::prelude::*;
 
 use anyhow::anyhow;
-use std::fmt;
 use std::fs::File;
 use std::process::{Command, Stdio};
 

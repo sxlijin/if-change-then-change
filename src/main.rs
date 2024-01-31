@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::fmt;
 use std::collections::HashMap;
 use std::io::Read;
 use std::ops::Range;
@@ -95,6 +96,22 @@ impl IfChangeThenChange {
     }
 }
 
+struct Diagnostic {
+    path: String,
+    // 0-indexed, inclusive
+    start_line: i32,
+    // 0-indexed, exclusive
+    end_line: i32,
+    message: String,
+}
+
+
+impl fmt::Display for Diagnostic {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}-{} - {}", self.path, self.start_line, self.end_line, self.message)
+    }
+}
+
 mod test {
     use crate::IfChangeThenChange;
 
@@ -169,14 +186,18 @@ fn run() -> Result<()> {
         for ictc_block in ictc_blocks {
             for then_change_path in ictc_block.then_change {
                 // DO NOT LAND- need to actually compute intersection of diff and ictc blocks
-                diagnostics.push(format!("{}:{} - expected change in this file, b/c there was a change in {}", 
-                    then_change_path, 0, ifchange_path))
+                diagnostics.push(Diagnostic {
+                    path: then_change_path,
+                    start_line: 0,
+                    end_line: 0,
+                    message: format!("expected change here due to if-change in {}", ifchange_path),
+                });
             }
         }
     }
 
     for diagnostic in diagnostics {
-        println!("diagnostic: {}", diagnostic);
+        println!("{}", diagnostic);
     }
 
     Ok(())
