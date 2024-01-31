@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use std::collections::HashMap;
 use std::fmt;
-use std::io::Read;
 use std::ops::Range;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -14,8 +13,13 @@ pub struct BlockKey {
 pub struct IfChangeThenChange {
     pub key: BlockKey,
     // TODO- make sure that this range refers to the _contents_ of the block, and excludes the block delimiters
-    // i think (rn at least) that it does not make sense to trigger an ictc check unless
-    pub if_change: Range<usize>,
+    // i think (rn at least) that it makes sense to trigger an ictc check if and only if the contents have been
+    // modified - if the then_change list has been modified, there's no need to trigger an ictc check (but we
+    // should probably loop to determine whether or not the cross-file relation is well-formed)
+    //
+    // 0-indexed, excludes block delimiters
+    pub content_range: Range<usize>,
+    // TODO- we should also track line #s of if-change and then-change clauses
     pub then_change: Vec<BlockKey>,
 }
 
@@ -49,7 +53,7 @@ impl IfChangeThenChange {
             if line.starts_with("# if-change") {
                 if let Some(ictc) = curr {
                     errors.push(
-                        format!("invalid if-change block starting on {:?}", ictc.if_change)
+                        format!("invalid if-change block starting on {:?}", ictc.content_range)
                             .to_string(),
                     );
                 }
@@ -59,13 +63,13 @@ impl IfChangeThenChange {
                         // TODO- implement block name parsing
                         block_name: "".to_string(),
                     },
-                    if_change: i..i,
+                    content_range: i..i,
                     then_change: vec![],
                 });
             } else if line.starts_with("# then-change") {
                 if let Some(mut ictc) = curr {
-                    let if_change_range = ictc.if_change;
-                    ictc.if_change = if_change_range.start..i;
+                    let if_change_range = ictc.content_range;
+                    ictc.content_range = if_change_range.start + 1..i;
 
                     // if this line is "then-change $filename"
                     if line.starts_with("# then-change ") {
@@ -98,7 +102,7 @@ impl IfChangeThenChange {
                 curr = None;
             } else {
                 if let Some(ictc) = &mut curr {
-                    if !ictc.if_change.is_empty() {
+                    if !ictc.content_range.is_empty() {
                         ictc.then_change.push(BlockKey {
                             path: line.to_string(),
                             // TODO- implement block name parsing
@@ -141,7 +145,7 @@ amet",
                     path: "if-change.foo".to_string(),
                     block_name: "".to_string(),
                 },
-                if_change: 1..5,
+                content_range: 1..5,
                 then_change: vec![BlockKey {
                     path: "then-change.foo".to_string(),
                     block_name: "".to_string(),

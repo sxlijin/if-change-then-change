@@ -11,19 +11,31 @@ mod if_change_then_change;
 // has been changed but b.sh has not, then the diagnostic should be tied to b.sh.
 struct Diagnostic {
     path: String,
-    // 0-indexed, inclusive
-    start_line: i32,
-    // 0-indexed, exclusive
-    end_line: i32,
+    // 0-indexed, inclusive-exclusive
+    lines: Option<Range<usize>>,
     message: String,
 }
 
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let line_position = {
+            if let Some(Range { start: start_line, end: end_line }) = self.lines {
+                // We _could_ just always do a.sh:4-4 when the line range only consists of one line, but
+                // a.sh:4 is much more readable; GH permalinks are a good example of the prior art here
+                if start_line + 1 == end_line {
+                    (start_line + 1).to_string()
+                } else {
+                    format!("{}-{}", start_line + 1, end_line)
+                }
+            } else {
+                "0".to_string()
+            }
+        };
+
         write!(
             f,
-            "{}:{}-{} - {}",
-            self.path, self.start_line, self.end_line, self.message
+            "{}:{} - {}",
+            self.path, line_position, self.message
         )
     }
 }
@@ -72,28 +84,53 @@ fn run() -> Result<()> {
         .map(|patched_file| (patched_file.target_file.replace("b/", ""), patched_file))
         .collect::<HashMap<String, &unidiff::PatchedFile>>();
 
-    let ictc_blocks_by_path = {
-        let mut ictc_blocks_by_path = HashMap::new();
+    let ictc_by_block_name_by_path = {
+        let mut ictc_by_block_name_by_path = HashMap::new();
 
-        for post_diff_path in diffs_by_post_diff_path.keys() {
-            let actual_path = post_diff_path;
-            ictc_blocks_by_path.insert(
-                actual_path.clone(),
+        // TODO- do we need to go deeper than this?
+        // BFS 1 layer deep: we shouldn't have to go further, in theory (although we may have to)
+
+        let mut then_change_paths = Vec::new();
+
+        for path in diffs_by_post_diff_path.keys() {
+            let ictc_by_block_name = 
                 if_change_then_change::IfChangeThenChange::from_str(
-                    &actual_path,
-                    &std::fs::read_to_string(&actual_path)?,
-                ),
+                    path,
+                    &std::fs::read_to_string(path)?,
+                );
+            for ictc in ictc_by_block_name.values() {
+                for then_change_key in ictc.then_change.iter() {
+                    if !diffs_by_post_diff_path.contains_key(&then_change_key.path) {
+                        then_change_paths.push(then_change_key.path.clone());
+                    }
+                }
+            }
+            ictc_by_block_name_by_path.insert(
+                path.clone(),
+                ictc_by_block_name,
             );
         }
 
-        ictc_blocks_by_path
+        for path in then_change_paths {
+            let ictc_by_block_name = 
+                if_change_then_change::IfChangeThenChange::from_str(
+                    &path,
+                    &std::fs::read_to_string(&path)?,
+                );
+            ictc_by_block_name_by_path.insert(
+                path,
+                ictc_by_block_name,
+            );
+        }
+
+        ictc_by_block_name_by_path
     };
 
     let modified_blocks_by_key = {
         let mut modified_blocks_by_key = HashSet::new();
 
-        for ictc_blocks in ictc_blocks_by_path.values() {
-            for ictc_block in ictc_blocks.values() {
+        for ictc_by_block_name in ictc_by_block_name_by_path.values() {
+            for ictc_block in ictc_by_block_name.values() {
                 let Some(&target_diff) = diffs_by_post_diff_path.get(&ictc_block.key.path) else {
                     continue;
                 };
@@ -105,7 +142,7 @@ fn run() -> Result<()> {
                         // TODO- is this 1-indexed or 0-indexed lineno? might be 1-indexed
                         // TODO- is this algo sound? are there ways that can break this approach w in_ictc_block?
                         if let Some(lineno) = line.target_line_no {
-                            in_ictc_block = ictc_block.if_change.contains(&(lineno-1));
+                            in_ictc_block = ictc_block.content_range.contains(&(lineno-1));
                         }
                         if in_ictc_block && (line.is_added() || line.is_removed()) {
                             modified_blocks_by_key.insert(ictc_block.key.clone());
@@ -129,26 +166,24 @@ fn run() -> Result<()> {
 
     let mut diagnostics = Vec::new();
 
-    for (_, ictc_blocks) in ictc_blocks_by_path.iter() {
-        for (_, ictc_block) in ictc_blocks {
+    for (_, ictc_by_block_name) in ictc_by_block_name_by_path.iter() {
+        for (_, ictc_block) in ictc_by_block_name {
             if modified_blocks_by_key.contains(&ictc_block.key) {
                 for then_change_key in ictc_block.then_change.iter() {
                     if modified_blocks_by_key.contains(then_change_key) {
                         continue;
                     }
 
-                    let (mut start_line, mut end_line) = (0, 0);
-                    if let Some(ictc_blocks) = ictc_blocks_by_path.get(&then_change_key.path) {
+                    let mut block_range = None;
+                    if let Some(ictc_blocks) = ictc_by_block_name_by_path.get(&then_change_key.path) {
                         if let Some(ictc_block) = ictc_blocks.get(&then_change_key.block_name) {
-                            start_line = ictc_block.if_change.start;
-                            end_line = ictc_block.if_change.end;
+                            block_range = Some(ictc_block.content_range.clone());
                         }
                     }
-                    if start_line == 0 && end_line == 0 {
+                    if block_range == None {
                         diagnostics.push(Diagnostic {
                             path: then_change_key.path.clone(),
-                            start_line: 0,
-                            end_line: 0,
+                            lines: None,
                             message: format!(
                                 "expected if-change-then-change in this file due to if-change in {}",
                                 ictc_block.key.path
@@ -157,8 +192,7 @@ fn run() -> Result<()> {
                     }
                     diagnostics.push(Diagnostic {
                         path: then_change_key.path.clone(),
-                        start_line: start_line as i32,
-                        end_line: end_line as i32,
+                        lines: block_range,
                         message: format!(
                             "expected change here due to if-change in {}",
                             ictc_block.key.path
