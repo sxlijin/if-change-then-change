@@ -1,0 +1,11 @@
+diff --git a/tests/data/basic/c.sh b/tests/data/basic/c.sh
+index beef41c..5719979 100644
+--- a/tests/data/basic/c.sh
++++ b/tests/data/basic/c.sh
+@@ -1,5 +1,6 @@
+ export LOG="thumbnail=debug;video=info;"
+ # if-change
++export THUMBNAIL_BUCKET="s3://video-thumbnails/"
+ export VIDEO_BUCKET="s3://video-service/"
+ # then-change d.sh
+ export VIDEO_CONFIG="video-service/config.json"

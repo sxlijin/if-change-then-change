@@ -1,5 +1,6 @@
 use assert_cmd::prelude::*;
 
+use anyhow::anyhow;
 use std::fmt;
 use std::fs::File;
 use std::process::{Command, Stdio};
@@ -14,6 +15,7 @@ pub struct ToolOutput {
 pub fn run_tool(data_path: &str) -> anyhow::Result<ToolOutput> {
     let mut cmd = Command::cargo_bin("to-be-named")?;
 
+    cmd.env("RUST_BACKTRACE", "1");
     cmd.env("RUST_LOG", "debug");
     cmd.stdin(File::open(data_path)?);
     cmd.stderr(Stdio::inherit());
@@ -22,6 +24,6 @@ pub fn run_tool(data_path: &str) -> anyhow::Result<ToolOutput> {
 
     return Ok(ToolOutput {
         stdout: String::from_utf8(output.stdout)?,
-        exit_code: output.status.code().ok_or("No exit code - process was cancelled, maybe?")?,
+        exit_code: output.status.code().ok_or(anyhow!("No exit code - process was cancelled, maybe?"))?,
     });
 }

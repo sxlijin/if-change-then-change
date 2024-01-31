@@ -1,0 +1,20 @@
+diff --git a/tests/data/basic/c.sh b/tests/data/basic/c.sh
+index beef41c..5719979 100644
+--- a/tests/data/basic/c.sh
++++ b/tests/data/basic/c.sh
+@@ -1,5 +1,6 @@
+ export LOG="thumbnail=debug;video=info;"
+ # if-change
++export THUMBNAIL_BUCKET="s3://video-thumbnails/"
+ export VIDEO_BUCKET="s3://video-service/"
+ # then-change d.sh
+ export VIDEO_CONFIG="video-service/config.json"
+diff --git a/tests/data/basic/d.sh b/tests/data/basic/d.sh
+index 1477d87..290867e 100644
+--- a/tests/data/basic/d.sh
++++ b/tests/data/basic/d.sh
+@@ -1,3 +1,4 @@
+ echo "building video service"
++echo "indexing video assets"
+ echo "serving from s3://video-service/ and s3://video-thumbnails/"
+ echo "service started on port 0000"

@@ -125,12 +125,7 @@ amet",
     }
 }
 
-fn main() -> Result<()> {
-    
-    env_logger::init();
-
-    log::info!("Starting to-be-named");
-
+fn run() -> Result<()> {
     // Create a mutable String to store the user input
     let mut input = String::new();
 
@@ -185,4 +180,18 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn main() {
+    env_logger::init();
+
+    log::info!("Starting to-be-named");
+
+    match run() {
+        Ok(_) => (),
+        Err(err) => {
+            log::error!("{}", err);
+            std::process::exit(1);
+        }
+    }
 }
