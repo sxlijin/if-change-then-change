@@ -16,6 +16,7 @@ fn both_changed_both_added_lines_in_if_change() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
 fn both_changed_both_removed_lines_in_if_change() -> anyhow::Result<()> {
     // both a.sh and b.sh changed
     //   a.sh and b.sh contain if-change-then-change

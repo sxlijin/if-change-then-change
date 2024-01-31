@@ -4,7 +4,7 @@ use std::fmt;
 use std::io::Read;
 use std::ops::Range;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct BlockKey {
     pub path: String,
     pub block_name: String,
@@ -13,6 +13,8 @@ pub struct BlockKey {
 #[derive(Debug, PartialEq, Eq)]
 pub struct IfChangeThenChange {
     pub key: BlockKey,
+    // TODO- make sure that this range refers to the _contents_ of the block, and excludes the block delimiters
+    // i think (rn at least) that it does not make sense to trigger an ictc check unless
     pub if_change: Range<usize>,
     pub then_change: Vec<BlockKey>,
 }
@@ -43,7 +45,7 @@ impl IfChangeThenChange {
         let mut errors: Vec<String> = Vec::new();
 
         for (i, line) in s.lines().enumerate() {
-            log::debug!("Parsing line {:?}", line);
+            //log::debug!("Parsing line {:?}", line);
             if line.starts_with("# if-change") {
                 if let Some(ictc) = curr {
                     errors.push(
@@ -87,7 +89,7 @@ impl IfChangeThenChange {
                 match curr {
                     Some(ictc) => {
                         ret.insert(ictc.key.block_name.clone(), ictc);
-                    },
+                    }
                     None => errors.push(
                         "fi-change found on line ??? but does not match a preceding then-change"
                             .to_string(),
@@ -113,25 +115,27 @@ impl IfChangeThenChange {
 }
 
 mod test {
-    use anyhow::anyhow;
     use crate::if_change_then_change::{BlockKey, IfChangeThenChange};
+    use anyhow::anyhow;
 
-    //#[test]
+    #[test]
     fn basic() -> anyhow::Result<()> {
         let parsed = IfChangeThenChange::from_str(
             "if-change.foo",
             "\
 lorem
-// if-change
+# if-change
 ipsum
 dolor
 sit
-// then-change then-change.foo
+# then-change then-change.foo
 amet",
         );
         assert_eq!(parsed.len(), 1);
         assert_eq!(
-            *parsed.get("").ok_or(anyhow!("Did not parse an if-change-then-change block"))?,
+            *parsed
+                .get("")
+                .ok_or(anyhow!("Did not parse an if-change-then-change block"))?,
             IfChangeThenChange {
                 key: BlockKey {
                     path: "if-change.foo".to_string(),
@@ -144,6 +148,23 @@ amet",
                 }],
             }
         );
+
+        Ok(())
+    }
+
+    use rangemap::RangeMap;
+    use rangemap::RangeSet;
+
+    #[test]
+    fn rangemap_test() -> anyhow::Result<()> {
+        let mut rangeset = RangeSet::<i32>::new();
+
+        rangeset.insert(5..9);
+
+        assert!(rangeset.contains(&5i32));
+        assert!(!rangeset.contains(&9i32));
+        assert!(rangeset.overlaps(&(8..8)));
+        assert!(!rangeset.overlaps(&(9..9)));
 
         Ok(())
     }
