@@ -104,3 +104,4 @@ tests/data/basic/d.sh - expected change here due to if-change in tests/data/basi
 }
 
 // TODO- need tests for when thenchange references a file that does not exist
+// TODO- how to handle deleted files?
