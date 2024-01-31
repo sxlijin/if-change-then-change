@@ -8,7 +8,7 @@ index 8f6e2a2..d9b5213 100644
 -export STARTUP_DELAY="5000ms"
  export THUMBNAIL_BUCKET="s3://video-thumbnails/"
  export VIDEO_BUCKET="s3://video-service/"
- # then-change b.sh
+ # then-change tests/data/basic/b.sh
 diff --git a/tests/data/basic/b.sh b/tests/data/basic/b.sh
 index bfd6a26..2353710 100644
 --- a/tests/data/basic/b.sh
@@ -19,5 +19,5 @@ index bfd6a26..2353710 100644
  # if-change
 -echo "waiting 5000ms before startup because health check shenanigans"
  echo "serving from s3://video-service/ and s3://video-thumbnails/"
- # then-change a.sh
+ # then-change tests/data/basic/a.sh
  echo "service started on port 0000"

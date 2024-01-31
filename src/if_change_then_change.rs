@@ -148,7 +148,7 @@ amet",
                     path: "if-change.foo".to_string(),
                     block_name: "".to_string(),
                 },
-                content_range: 1..5,
+                content_range: 2..5,
                 then_change: vec![BlockKey {
                     path: "then-change.foo".to_string(),
                     block_name: "".to_string(),
@@ -159,7 +159,6 @@ amet",
         Ok(())
     }
 
-    use rangemap::RangeMap;
     use rangemap::RangeSet;
 
     #[test]

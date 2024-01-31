@@ -7,7 +7,7 @@ index f4ba23f..435dfe7 100644
  # if-change
 +export THUMBNAIL_BUCKET="s3://video-thumbnails/"
  export VIDEO_BUCKET="s3://video-service/"
- # then-change b.sh
+ # then-change tests/data/basic/b.sh
  export VIDEO_CONFIG="video-service/config.json"
 diff --git a/tests/data/basic/b.sh b/tests/data/basic/b.sh
 index e0e6f46..2353710 100644
@@ -19,5 +19,5 @@ index e0e6f46..2353710 100644
  # if-change
 -echo "serving from s3://video-service/"
 +echo "serving from s3://video-service/ and s3://video-thumbnails/"
- # then-change a.sh
+ # then-change tests/data/basic/a.sh
  echo "service started on port 0000"

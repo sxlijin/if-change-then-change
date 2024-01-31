@@ -10,7 +10,7 @@ fn both_changed_both_added_lines_in_if_change() -> anyhow::Result<()> {
     let run =
         framework::run_tool("tests/data/basic/both-changed-both-added-lines-in-if-change.diff")?;
 
-    assert_eq!(run.stdout, "\n");
+    assert_eq!(run.stdout, "");
     assert_eq!(run.exit_code, 0);
 
     Ok(())
@@ -24,7 +24,7 @@ fn both_changed_both_removed_lines_in_if_change() -> anyhow::Result<()> {
     let run =
         framework::run_tool("tests/data/basic/both-changed-both-removed-lines-in-if-change.diff")?;
 
-    assert_eq!(run.stdout, "\n");
+    assert_eq!(run.stdout, "");
     assert_eq!(run.exit_code, 0);
 
     Ok(())
@@ -41,7 +41,7 @@ fn both_changed_one_in_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-b.sh:4,4 - expected change here due to if-change in tests/data/basic/a.sh
+tests/data/basic/b.sh:4 - expected change here due to if-change in tests/data/basic/a.sh
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -60,7 +60,7 @@ fn both_changed_one_missing_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-d.sh:0 - expected if-change-then-change in this file due to if-change in tests/data/basic/a.sh
+tests/data/basic/d.sh - expected if-change-then-change in this file due to if-change in tests/data/basic/c.sh
 "
     );
     assert_eq!(run.exit_code, 0);
