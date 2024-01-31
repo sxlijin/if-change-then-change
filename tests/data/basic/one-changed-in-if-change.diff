@@ -3,7 +3,7 @@ index f4ba23f..435dfe7 100644
 --- a/tests/data/basic/a.sh
 +++ b/tests/data/basic/a.sh
 @@ -1,5 +1,6 @@
- export AWS_REGION="us-east1"
+ export LOG="thumbnail=debug;video=info;"
  # if-change
 +export THUMBNAIL_BUCKET="s3://video-thumbnails/"
  export VIDEO_BUCKET="s3://video-service/"
