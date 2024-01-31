@@ -159,10 +159,10 @@ amet",
         Ok(())
     }
 
-    use rangemap::RangeSet;
-
     #[test]
     fn rangemap_test() -> anyhow::Result<()> {
+        use rangemap::RangeSet;
+
         let mut rangeset = RangeSet::<i32>::new();
 
         rangeset.insert(5..9);

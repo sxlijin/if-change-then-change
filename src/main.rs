@@ -118,6 +118,14 @@ fn run() -> Result<()> {
         ictc_by_block_name_by_path
     };
 
+    // for every ictc-block
+    //   find all intersecting patch hunks
+    //   for each intersecting patch hunk
+    //     check if the intersection contains added/removed lines at all
+    //     (unclear if this should only iterate thru intersection or if it should iterate thru entire hunk)
+    //     if there are added/removed in the ictc-block
+    //       mark the block as "modified"
+    // do not mark the block as "modified"
     let modified_blocks_by_key = {
         let mut modified_blocks_by_key = HashSet::new();
 
@@ -148,41 +156,48 @@ fn run() -> Result<()> {
     };
 
     // for every ictc-block
-    //   find all intersecting patch hunks
-    //   for each intersecting patch hunk
-    //     check if the intersection contains added/removed lines at all
-    //     (unclear if this should only iterate thru intersection or if it should iterate thru entire hunk)
-    //     if there are added/removed in the ictc-block
-    //       mark the block as "modified"
-    // do not mark the block as "modified"
+    //   if the ifchange block is in the "modified block" set
+    //     for every thenchange block
+    //       if the thenchange block exists in the "modified block" set
+    //         do nothing
+    //       else
+    //         add diagnostic
+    let diagnostics = {
+        let mut diagnostics = Vec::new();
 
-    let mut diagnostics = Vec::new();
+        for ictc_block in ictc_by_block_name_by_path
+            .values()
+            .flat_map(|ictc_by_block_name| ictc_by_block_name.values())
+        {
+            if !modified_blocks_by_key.contains(&ictc_block.key) {
+                continue;
+            }
 
-    for (_, ictc_by_block_name) in ictc_by_block_name_by_path.iter() {
-        for (_, ictc_block) in ictc_by_block_name {
-            if modified_blocks_by_key.contains(&ictc_block.key) {
-                for then_change_key in ictc_block.then_change.iter() {
-                    if modified_blocks_by_key.contains(then_change_key) {
-                        continue;
-                    }
+            for then_change_key in ictc_block.then_change.iter() {
+                if modified_blocks_by_key.contains(then_change_key) {
+                    continue;
+                }
 
-                    let mut block_range = None;
-                    if let Some(ictc_blocks) = ictc_by_block_name_by_path.get(&then_change_key.path)
-                    {
-                        if let Some(ictc_block) = ictc_blocks.get(&then_change_key.block_name) {
-                            block_range = Some(ictc_block.content_range.clone());
-                        }
+                let mut block_range = None;
+                if let Some(ictc_blocks) = ictc_by_block_name_by_path.get(&then_change_key.path) {
+                    if let Some(ictc_block) = ictc_blocks.get(&then_change_key.block_name) {
+                        block_range = Some(ictc_block.content_range.clone());
                     }
-                    if block_range == None {
-                        diagnostics.push(Diagnostic {
-                            path: then_change_key.path.clone(),
-                            lines: None,
-                            message: format!(
-                                "expected if-change-then-change in this file due to if-change in {}",
-                                ictc_block.key.path
-                            ),
-                        });
-                    }
+                }
+                if block_range.is_none() {
+                    diagnostics.push(Diagnostic {
+                        path: then_change_key.path.clone(),
+                        lines: None,
+                        message: format!(
+                            "expected if-change-then-change in this file due to if-change in {}",
+                            ictc_block.key.path
+                        ),
+                    });
+                }
+
+                if block_range.is_some()
+                    || !diffs_by_post_diff_path.contains_key(&then_change_key.path)
+                {
                     diagnostics.push(Diagnostic {
                         path: then_change_key.path.clone(),
                         lines: block_range,
@@ -194,15 +209,9 @@ fn run() -> Result<()> {
                 }
             }
         }
-    }
 
-    // for every ictc-block
-    //   if the ifchange block is in the "modified block" set
-    //     for every thenchange block
-    //       if the thenchange block exists in the "modified block" set
-    //         do nothing
-    //       else
-    //         add diagnostic
+        diagnostics
+    };
 
     for diagnostic in diagnostics {
         println!("{}", diagnostic);
