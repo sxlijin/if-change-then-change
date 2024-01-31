@@ -149,20 +149,20 @@ amet",
 }
 
 fn run() -> Result<()> {
-    // Create a mutable String to store the user input
-    let mut input = String::new();
+    let patch_set = {
+        let mut input = String::new();
 
-    // Read a line from stdin and store it in the 'input' String
-    std::io::stdin()
-        .read_to_string(&mut input)
-        .expect("Failed to read line");
+        std::io::stdin()
+            .read_to_string(&mut input)
+            .expect("Failed to read stdin");
 
-    log::debug!("stdin: {}", input);
+        let mut patch_set = unidiff::PatchSet::new();
+        patch_set.parse(input).ok().expect("Error parsing diff");
 
-    let mut patch = unidiff::PatchSet::new();
-    patch.parse(input).ok().expect("Error parsing diff");
+        patch_set
+    };
 
-    let diffs_by_post_diff_path = patch
+    let diffs_by_post_diff_path = patch_set
         .files()
         .iter()
         .map(|patched_file| (patched_file.target_file.clone(), patched_file))

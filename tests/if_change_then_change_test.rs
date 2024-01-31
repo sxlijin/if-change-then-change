@@ -7,7 +7,8 @@ fn both_changed_both_added_lines_in_if_change() -> anyhow::Result<()> {
     // both a.sh and b.sh changed
     //   a.sh and b.sh contain if-change-then-change
     //   a.sh and b.sh changed in if-change block
-    let run = framework::run_tool("tests/data/basic/both-changed-both-added-lines-in-if-change.diff")?;
+    let run =
+        framework::run_tool("tests/data/basic/both-changed-both-added-lines-in-if-change.diff")?;
 
     assert_eq!(run.stdout, "\n");
     assert_eq!(run.exit_code, 0);
@@ -19,7 +20,8 @@ fn both_changed_both_removed_lines_in_if_change() -> anyhow::Result<()> {
     // both a.sh and b.sh changed
     //   a.sh and b.sh contain if-change-then-change
     //   a.sh and b.sh changed in if-change block
-    let run = framework::run_tool("tests/data/basic/both-changed-both-removed-lines-in-if-change.diff")?;
+    let run =
+        framework::run_tool("tests/data/basic/both-changed-both-removed-lines-in-if-change.diff")?;
 
     assert_eq!(run.stdout, "\n");
     assert_eq!(run.exit_code, 0);
