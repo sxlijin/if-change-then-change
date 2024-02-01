@@ -105,3 +105,51 @@ tests/data/basic/d.sh - expected change here due to if-change in tests/data/basi
 
 // TODO- need tests for when thenchange references a file that does not exist
 // TODO- how to handle deleted files?
+
+#[test]
+fn then_change_references_nonexistent_file() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/basic/then-change-references-nonexistent-file.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+no idea what's supposed to go here yet
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn post_diff_path_is_nonexistent() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/basic/post-diff-path-is-nonexistent.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+no idea what's supposed to go here yet
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn post_diff_path_is_dev_null() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/basic/post-diff-path-is-dev-null.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+no idea what's supposed to go here yet
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+// TODO- add test case for renamed file
+// TODO- add test case for LFS diff

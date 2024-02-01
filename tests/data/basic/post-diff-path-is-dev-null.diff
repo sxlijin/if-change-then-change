@@ -1,0 +1,12 @@
+diff --git a/tests/data/basic/z.sh b/tests/data/basic/z.sh
+deleted file mode 100644
+index 771ac22..0000000
+--- a/tests/data/basic/z.sh
++++ /dev/null
+@@ -1,6 +0,0 @@
+-echo "starting watchdog thread"
+-echo "starting handler for /health"
+-# if-change
+-echo "starting handler for /image-api/v1"
+-echo "starting handler for /video-api/v1"
+-# then-change does-not-exist.cfg

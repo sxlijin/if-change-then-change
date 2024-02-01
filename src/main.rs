@@ -41,6 +41,8 @@ impl fmt::Display for Diagnostic {
 }
 
 fn run() -> Result<()> {
+    let mut diagnostics = Vec::new();
+
     let (patch_set, is_git_diff) = {
         let mut input = String::new();
 
@@ -91,26 +93,52 @@ fn run() -> Result<()> {
         let mut then_change_paths = Vec::new();
 
         for path in diffs_by_post_diff_path.keys() {
+            let Ok(file_contents) = std::fs::read_to_string(path) else {
+                diagnostics.push(Diagnostic {
+                    // TODO- in what cases does the post-diff path not exist?
+                    // TODO- if a file is deleted, the post-diff path is... /dev/null?
+                    path: "-".to_string(),
+                    // TODO- $lines should reference the line where the thenchange comes from
+                    lines: None,
+                    message: format!(
+                        "diff references file that does not exist: '{}'",
+                       path 
+                    ),
+                });
+                continue;
+            };
             let ictc_by_block_name = if_change_then_change::IfChangeThenChange::from_str(
                 path,
-                &std::fs::read_to_string(path)?,
+                &file_contents,
             );
             for ictc in ictc_by_block_name.values() {
                 for then_change_key in ictc.then_change.iter() {
                     if !diffs_by_post_diff_path.contains_key(&then_change_key.path) {
-                        then_change_paths.push(then_change_key.path.clone());
+                        then_change_paths.push((&ictc, then_change_key.path.clone()));
                     }
                 }
             }
             ictc_by_blockname_by_path.insert(path.clone(), ictc_by_block_name);
         }
 
-        for path in then_change_paths {
+        for (ictc, then_change_path) in then_change_paths {
+            let Ok(file_contents) = std::fs::read_to_string(then_change_path) else {
+                diagnostics.push(Diagnostic {
+                    path: ictc.key.path.clone(),
+                    // TODO- $lines should reference the line where the thenchange comes from
+                    lines: Some(ictc.content_range),
+                    message: format!(
+                        "then-change references file that does not exist: '{}'",
+                        then_change_path
+                    ),
+                });
+                continue;
+            };
             let ictc_by_block_name = if_change_then_change::IfChangeThenChange::from_str(
-                &path,
-                &std::fs::read_to_string(&path)?,
+                &then_change_path,
+                &file_contents,
             );
-            ictc_by_blockname_by_path.insert(path, ictc_by_block_name);
+            ictc_by_blockname_by_path.insert(then_change_path, ictc_by_block_name);
         }
 
         ictc_by_blockname_by_path
@@ -164,56 +192,52 @@ fn run() -> Result<()> {
     //         do nothing
     //       else
     //         add diagnostic
-    let diagnostics = {
-        let mut diagnostics = Vec::new();
+    for ictc_block in ictc_by_blockname_by_path
+        .values()
+        .flat_map(|ictc_by_block_name| ictc_by_block_name.values())
+    {
+        if !modified_blocks_by_key.contains(&ictc_block.key) {
+            continue;
+        }
 
-        for ictc_block in ictc_by_blockname_by_path
-            .values()
-            .flat_map(|ictc_by_block_name| ictc_by_block_name.values())
-        {
-            if !modified_blocks_by_key.contains(&ictc_block.key) {
+        for then_change_key in ictc_block.then_change.iter() {
+            if modified_blocks_by_key.contains(then_change_key) {
                 continue;
             }
 
-            for then_change_key in ictc_block.then_change.iter() {
-                if modified_blocks_by_key.contains(then_change_key) {
-                    continue;
-                }
-
-                let mut block_range = None;
-                if let Some(ictc_blocks) = ictc_by_blockname_by_path.get(&then_change_key.path) {
-                    if let Some(ictc_block) = ictc_blocks.get(&then_change_key.block_name) {
-                        block_range = Some(ictc_block.content_range.clone());
-                    }
-                }
-                if block_range.is_none() {
-                    diagnostics.push(Diagnostic {
-                        path: then_change_key.path.clone(),
-                        lines: None,
-                        message: format!(
-                            "expected if-change-then-change in this file due to if-change in {}",
-                            ictc_block.key.path
-                        ),
-                    });
-                }
-
-                if block_range.is_some()
-                    || !diffs_by_post_diff_path.contains_key(&then_change_key.path)
-                {
-                    diagnostics.push(Diagnostic {
-                        path: then_change_key.path.clone(),
-                        lines: block_range,
-                        message: format!(
-                            "expected change here due to if-change in {}",
-                            ictc_block.key.path
-                        ),
-                    });
+            let mut block_range = None;
+            if let Some(ictc_blocks) = ictc_by_blockname_by_path.get(&then_change_key.path) {
+                if let Some(ictc_block) = ictc_blocks.get(&then_change_key.block_name) {
+                    block_range = Some(ictc_block.content_range.clone());
                 }
             }
-        }
+            if block_range.is_none() {
+                diagnostics.push(Diagnostic {
+                    path: then_change_key.path.clone(),
+                    lines: None,
+                    message: format!(
+                        "expected if-change-then-change in this file due to if-change in {}",
+                        ictc_block.key.path
+                    ),
+                });
+            }
 
-        diagnostics
-    };
+            if block_range.is_some()
+                || !diffs_by_post_diff_path.contains_key(&then_change_key.path)
+            {
+                diagnostics.push(Diagnostic {
+                    path: then_change_key.path.clone(),
+                    lines: block_range,
+                    message: format!(
+                        "expected change here due to if-change in {}",
+                        ictc_block.key.path
+                    ),
+                });
+            }
+        }
+    }
+
+    diagnostics
 
     for diagnostic in diagnostics {
         println!("{}", diagnostic);
