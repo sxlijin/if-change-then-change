@@ -107,15 +107,10 @@ tests/data/basic/d.sh - expected change here due to if-change in tests/data/basi
 // TODO- how to handle deleted files?
 
 #[test]
-fn then_change_references_nonexistent_file() -> anyhow::Result<()> {
-    let run = framework::run_tool("tests/data/basic/then-change-references-nonexistent-file.diff")?;
+fn post_diff_path_is_dev_null() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/basic/post-diff-path-is-dev-null.diff")?;
 
-    assert_eq!(
-        run.stdout,
-        "\
-no idea what's supposed to go here yet
-"
-    );
+    assert_eq!(run.stdout, "");
     assert_eq!(run.exit_code, 0);
 
     Ok(())
@@ -128,7 +123,7 @@ fn post_diff_path_is_nonexistent() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-no idea what's supposed to go here yet
+- - diff references file that does not exist: 'nonexistent.sh'
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -137,13 +132,13 @@ no idea what's supposed to go here yet
 }
 
 #[test]
-fn post_diff_path_is_dev_null() -> anyhow::Result<()> {
-    let run = framework::run_tool("tests/data/basic/post-diff-path-is-dev-null.diff")?;
+fn then_change_references_nonexistent_file() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/basic/then-change-references-nonexistent-file.diff")?;
 
     assert_eq!(
         run.stdout,
         "\
-no idea what's supposed to go here yet
+tests/data/basic/z.sh:4-6 - then-change references file that does not exist: 'nonexistent.cfg'
 "
     );
     assert_eq!(run.exit_code, 0);

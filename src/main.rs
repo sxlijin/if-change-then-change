@@ -89,9 +89,6 @@ fn run() -> Result<()> {
     let ictc_by_blockname_by_path = {
         let mut ictc_by_blockname_by_path = HashMap::new();
 
-        // TODO- is doing 1 layer of BFS sufficient to discover all paths containing if-change-then-change blocks?
-        let mut then_change_paths = Vec::new();
-
         for path in diffs_by_post_diff_path.keys() {
             let Ok(file_contents) = std::fs::read_to_string(path) else {
                 diagnostics.push(Diagnostic {
@@ -100,46 +97,51 @@ fn run() -> Result<()> {
                     path: "-".to_string(),
                     // TODO- $lines should reference the line where the thenchange comes from
                     lines: None,
-                    message: format!(
-                        "diff references file that does not exist: '{}'",
-                       path 
-                    ),
+                    message: format!("diff references file that does not exist: '{}'", path),
                 });
                 continue;
             };
-            let ictc_by_block_name = if_change_then_change::IfChangeThenChange::from_str(
-                path,
-                &file_contents,
-            );
-            for ictc in ictc_by_block_name.values() {
-                for then_change_key in ictc.then_change.iter() {
-                    if !diffs_by_post_diff_path.contains_key(&then_change_key.path) {
-                        then_change_paths.push((&ictc, then_change_key.path.clone()));
-                    }
-                }
-            }
+            let ictc_by_block_name =
+                if_change_then_change::IfChangeThenChange::from_str(path, &file_contents);
             ictc_by_blockname_by_path.insert(path.clone(), ictc_by_block_name);
         }
 
-        for (ictc, then_change_path) in then_change_paths {
-            let Ok(file_contents) = std::fs::read_to_string(then_change_path) else {
-                diagnostics.push(Diagnostic {
-                    path: ictc.key.path.clone(),
-                    // TODO- $lines should reference the line where the thenchange comes from
-                    lines: Some(ictc.content_range),
-                    message: format!(
-                        "then-change references file that does not exist: '{}'",
-                        then_change_path
-                    ),
-                });
-                continue;
-            };
-            let ictc_by_block_name = if_change_then_change::IfChangeThenChange::from_str(
-                &then_change_path,
-                &file_contents,
-            );
-            ictc_by_blockname_by_path.insert(then_change_path, ictc_by_block_name);
+        // TODO- is doing 1 layer of BFS sufficient to discover all paths containing if-change-then-change blocks?
+        let mut more_ictcs = Vec::new();
+        for ictc_by_blockname in ictc_by_blockname_by_path.values_mut() {
+            for ictc in ictc_by_blockname.values_mut() {
+                ictc.then_change = ictc
+                    .then_change
+                    .drain(..)
+                    .filter(|then_change_key| {
+                        if diffs_by_post_diff_path.contains_key(&then_change_key.path) {
+                            return true;
+                        }
+                        let Ok(file_contents) = std::fs::read_to_string(&then_change_key.path)
+                        else {
+                            diagnostics.push(Diagnostic {
+                                path: ictc.key.path.clone(),
+                                // TODO- $lines should reference the line where the thenchange comes from
+                                lines: Some(ictc.content_range.clone()),
+                                message: format!(
+                                    "then-change references file that does not exist: '{}'",
+                                    then_change_key.path
+                                ),
+                            });
+                            return false;
+                        };
+                        let ictc_by_block_name =
+                            if_change_then_change::IfChangeThenChange::from_str(
+                                &then_change_key.path,
+                                &file_contents,
+                            );
+                        more_ictcs.push((then_change_key.path.clone(), ictc_by_block_name));
+                        true
+                    })
+                    .collect();
+            }
         }
+        ictc_by_blockname_by_path.extend(more_ictcs);
 
         ictc_by_blockname_by_path
     };
@@ -222,8 +224,7 @@ fn run() -> Result<()> {
                 });
             }
 
-            if block_range.is_some()
-                || !diffs_by_post_diff_path.contains_key(&then_change_key.path)
+            if block_range.is_some() || !diffs_by_post_diff_path.contains_key(&then_change_key.path)
             {
                 diagnostics.push(Diagnostic {
                     path: then_change_key.path.clone(),
@@ -236,8 +237,6 @@ fn run() -> Result<()> {
             }
         }
     }
-
-    diagnostics
 
     for diagnostic in diagnostics {
         println!("{}", diagnostic);
