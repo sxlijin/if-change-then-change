@@ -1,4 +1,5 @@
 use pretty_assertions::assert_eq;
+use test_log::test;
 
 mod framework;
 
@@ -41,7 +42,7 @@ fn both_changed_one_in_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/basic/b.sh:4 - expected change here due to if-change in tests/data/basic/a.sh
+tests/data/basic/b.sh:4 - expected change here due to change in tests/data/basic/a.sh:3-5
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -77,7 +78,7 @@ fn one_changed_in_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/basic/b.sh:4 - expected change here due to if-change in tests/data/basic/a.sh
+tests/data/basic/b.sh:4 - expected change here due to change in tests/data/basic/a.sh:3-5
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -95,7 +96,7 @@ fn one_changed_in_if_change_other_missing_if_change() -> anyhow::Result<()> {
         run.stdout,
         "\
 tests/data/basic/d.sh - expected if-change-then-change in this file due to if-change in tests/data/basic/c.sh
-tests/data/basic/d.sh - expected change here due to if-change in tests/data/basic/c.sh
+tests/data/basic/d.sh - expected change here due to change in tests/data/basic/c.sh:3-4
 "
     );
     assert_eq!(run.exit_code, 0);

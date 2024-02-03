@@ -2,6 +2,7 @@ use assert_cmd::prelude::*;
 
 use anyhow::anyhow;
 use std::fs::File;
+use std::io;
 use std::process::{Command, Stdio};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -17,9 +18,13 @@ pub fn run_tool(data_path: &str) -> anyhow::Result<ToolOutput> {
     cmd.env("RUST_BACKTRACE", "1");
     cmd.env("RUST_LOG", "debug");
     cmd.stdin(File::open(data_path)?);
-    cmd.stderr(Stdio::inherit());
 
     let output = cmd.output()?;
+
+    log::debug!(
+        "Tool invocation stderr:\n{}",
+        String::from_utf8(output.stderr)?
+    );
 
     return Ok(ToolOutput {
         stdout: String::from_utf8(output.stdout)?,
