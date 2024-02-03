@@ -1,6 +1,6 @@
 export AWS_PROFILE=production
 # if-change
-export VERSION="0.4.1-alpha"
+export VERSION="0.3.1-alpha"
 # then-change
 #   build.sh
 #   release-prod.sh
