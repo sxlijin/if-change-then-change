@@ -4,7 +4,6 @@ export VERSION="0.3.1-alpha"
 # then-change
 #   build.sh
 #   push.sh
-#   release-prod.sh
 #   release-staging.sh
 #   release-stress.sh
 

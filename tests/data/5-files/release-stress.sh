@@ -6,7 +6,6 @@ export VERSION="0.3.1-alpha"
 #   push.sh
 #   release-prod.sh
 #   release-staging.sh
-#   release-stress.sh
 
 echo "checking AWS credentials to ensure they're valid"
 echo "checking k8s credentials to ensure they're valid"
