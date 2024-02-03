@@ -163,5 +163,61 @@ stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'a/inv
     Ok(())
 }
 
+#[test]
+fn new_file() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/diff-has-path-changes/new-file.diff")?;
+
+    assert_eq!(run.stdout, "");
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn deleted_file() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/diff-has-path-changes/deleted-file.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+still need to decide what'll go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn renamed_file() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/diff-has-path-changes/renamed-file.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+still need to decide what'll go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn copied_file() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/diff-has-path-changes/copied-file.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+still need to decide what'll go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
 // TODO- add test case for renamed file
 // TODO- add test case for LFS diff
+// TODO- "then-change references file that does not exist" points at the wrong line number

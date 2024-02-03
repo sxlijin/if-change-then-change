@@ -89,7 +89,7 @@ fn run() -> Result<()> {
                 // Do some light git diff validation. There are only two cases where the source file and target file are not
                 // prefixed with "a/" and "b/" respectively: when a file has been added (source file is /dev/null) and when
                 // a file has been deleted (target file is /dev/null).
-                if (!source_path_valid || !target_path_valid) {
+                if !source_path_valid || !target_path_valid {
                     diagnostics.push(Diagnostic {
                         path: "stdin".to_string(),
                         // TODO- $lines should reference the line where the thenchange comes from
