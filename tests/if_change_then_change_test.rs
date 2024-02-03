@@ -122,7 +122,7 @@ fn post_diff_path_is_nonexistent() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-- - diff references file that does not exist: 'nonexistent.sh'
+stdin - diff references file that does not exist: 'nonexistent.sh'
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -152,8 +152,8 @@ fn invalid_diff_produces_diagnostics() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-- - invalid git diff: expected a/before.path -> b/after.path, but got 'invalid-before0.txt' -> 'b/invalid-after0.txt'
-- - invalid git diff: expected a/before.path -> b/after.path, but got 'a/invalid-before1.txt' -> 'invalid-after1.txt'
+stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'invalid-before0.txt' -> 'b/invalid-after0.txt'
+stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'a/invalid-before1.txt' -> 'invalid-after1.txt'
 "
     );
     assert_eq!(run.exit_code, 0);

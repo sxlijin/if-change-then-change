@@ -100,7 +100,7 @@ fn run() -> Result<()> {
                         && patched_file.target_file != "/dev/null"
                     {
                         diagnostics.push(Diagnostic {
-                            path: "-".to_string(),
+                            path: "stdin".to_string(),
                             // TODO- $lines should reference the line where the thenchange comes from
                             lines: None,
                             message: format!(
@@ -132,7 +132,7 @@ fn run() -> Result<()> {
                 diagnostics.push(Diagnostic {
                     // TODO- in what cases does the post-diff path not exist?
                     // TODO- if a file is deleted, the post-diff path is... /dev/null?
-                    path: "-".to_string(),
+                    path: "stdin".to_string(),
                     // TODO- $lines should reference the line where the thenchange comes from
                     lines: None,
                     message: format!("diff references file that does not exist: '{}'", path),
