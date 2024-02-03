@@ -122,9 +122,11 @@ impl IfChangeThenChange {
     }
 }
 
+#[cfg(test)]
 mod test {
     use crate::if_change_then_change::{BlockKey, IfChangeThenChange};
     use anyhow::anyhow;
+    use spectral::prelude::*;
 
     #[test]
     fn then_change_one_file() -> anyhow::Result<()> {
@@ -137,13 +139,12 @@ ipsum
 dolor
 sit
 # then-change then-change.foo
-amet",
+amet
+",
         );
-        assert_eq!(parsed.len(), 1);
-        assert_eq!(
-            *parsed
-                .get("")
-                .ok_or(anyhow!("Did not parse an if-change-then-change block"))?,
+        assert_that!(parsed).has_length(1);
+        assert_that!(parsed).contains_entry(
+            "".to_string(),
             IfChangeThenChange {
                 key: BlockKey {
                     path: "if-change.foo".to_string(),
@@ -154,7 +155,7 @@ amet",
                     path: "then-change.foo".to_string(),
                     block_name: "".to_string(),
                 }],
-            }
+            },
         );
 
         Ok(())
@@ -176,11 +177,9 @@ sit
 # end-change
 amet",
         );
-        assert_eq!(parsed.len(), 1);
-        assert_eq!(
-            *parsed
-                .get("")
-                .ok_or(anyhow!("Did not parse an if-change-then-change block"))?,
+        assert_that!(parsed).has_length(1);
+        assert_that!(parsed).contains_entry(
+            "".to_string(),
             IfChangeThenChange {
                 key: BlockKey {
                     path: "if-change.foo".to_string(),
@@ -195,9 +194,105 @@ amet",
                     BlockKey {
                         path: "then-change2.foo".to_string(),
                         block_name: "".to_string(),
-                    }
+                    },
                 ],
-            }
+            },
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn then_change_two_files_and_self() -> anyhow::Result<()> {
+        let parsed = IfChangeThenChange::from_str(
+            "if-change.foo",
+            "\
+lorem
+# if-change
+ipsum
+dolor
+sit
+# then-change
+#   if-change.foo
+#   then-change1.foo
+#   then-change2.foo
+# end-change
+amet",
+        );
+        assert_that!(parsed).has_length(1);
+        assert_that!(parsed).contains_entry(
+            "".to_string(),
+            IfChangeThenChange {
+                key: BlockKey {
+                    path: "if-change.foo".to_string(),
+                    block_name: "".to_string(),
+                },
+                content_range: 2..5,
+                then_change: vec![
+                    BlockKey {
+                        path: "then-change1.foo".to_string(),
+                        block_name: "".to_string(),
+                    },
+                    BlockKey {
+                        path: "then-change2.foo".to_string(),
+                        block_name: "".to_string(),
+                    },
+                ],
+            },
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn then_change_all_comment_formats() -> anyhow::Result<()> {
+        let parsed = IfChangeThenChange::from_str(
+            "if-change.foo",
+            "\
+lorem
+# if-change
+ipsum
+dolor
+sit
+# then-change then-change.foo
+amet
+
+    consectetur
+    adipiscing
+    elit
+    sed
+    do
+    eiusmod
+    tempor
+    incididunt
+ut
+labore
+et
+dolore
+magna
+aliqua.
+Ut
+enim
+ad
+minim
+veniam
+
+",
+        );
+        assert_that!(parsed).has_length(1);
+        assert_that!(parsed).contains_entry(
+            "".to_string(),
+            IfChangeThenChange {
+                key: BlockKey {
+                    path: "if-change.foo".to_string(),
+                    block_name: "".to_string(),
+                },
+                content_range: 2..5,
+                then_change: vec![BlockKey {
+                    path: "then-change.foo".to_string(),
+                    block_name: "".to_string(),
+                }],
+            },
         );
 
         Ok(())

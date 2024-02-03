@@ -268,8 +268,8 @@ still need to decide what'll go here
     Ok(())
 }
 
-// TODO- add test case for LFS diff
 // TODO- "then-change references file that does not exist" points at the wrong line number
+// TODO- add test case for LFS diff
 // TODO- add handling for // and -- comment delimiters, also leading spaces
 // TODO- validate that diffs match the current state of the file
 // TODO- add tests for malformed ictc blocks
