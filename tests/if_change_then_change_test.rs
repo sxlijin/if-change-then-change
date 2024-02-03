@@ -146,7 +146,7 @@ tests/data/path-validation/z.sh:4-6 - then-change references file that does not 
 }
 
 #[test]
-fn invalid_diff_produces_diagnostics() -> anyhow::Result<()> {
+fn invalid_before_after_paths() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/path-validation/invalid-before-after-paths.diff")?;
 
     assert_eq!(
