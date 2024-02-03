@@ -180,7 +180,7 @@ fn deleted_file() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-still need to decide what'll go here
+should complain that f1.sh ictc is now orphaned
 "
     );
     assert_eq!(run.exit_code, 0);
