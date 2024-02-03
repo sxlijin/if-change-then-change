@@ -1,11 +1,11 @@
-diff --git a/tests/data/keep-2-files-in-sync/a.sh b/tests/data/keep-2-files-in-sync/a.sh
+diff --git a/tests/data/2-files/a.sh b/tests/data/2-files/a.sh
 index f4ba23f..435dfe7 100644
---- a/tests/data/keep-2-files-in-sync/a.sh
-+++ b/tests/data/keep-2-files-in-sync/a.sh
+--- a/tests/data/2-files/a.sh
++++ b/tests/data/2-files/a.sh
 @@ -1,5 +1,6 @@
  export LOG="thumbnail=debug;video=info;"
  # if-change
 +export THUMBNAIL_BUCKET="s3://video-thumbnails/"
  export VIDEO_BUCKET="s3://video-service/"
- # then-change tests/data/keep-2-files-in-sync/b.sh
+ # then-change tests/data/2-files/b.sh
  export VIDEO_CONFIG="video-service/config.json"
