@@ -139,11 +139,11 @@ fn then_change_references_nonexistent_file() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        run.stdout,
-        "\
+            run.stdout,
+            "\
 tests/data/path-validation/z.sh:4-6 - then-change references file that does not exist: 'nonexistent.cfg'
 "
-    );
+        );
     assert_eq!(run.exit_code, 0);
 
     Ok(())
@@ -154,12 +154,12 @@ fn invalid_before_after_paths() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/path-validation/invalid-before-after-paths.diff")?;
 
     assert_eq!(
-        run.stdout,
-        "\
+            run.stdout,
+            "\
 stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'invalid-before0.txt' -> 'b/invalid-after0.txt'
 stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'a/invalid-before1.txt' -> 'invalid-after1.txt'
 "
-    );
+        );
     assert_eq!(run.exit_code, 0);
 
     Ok(())
@@ -270,6 +270,6 @@ still need to decide what'll go here
 
 // TODO- add test case for LFS diff
 // TODO- "then-change references file that does not exist" points at the wrong line number
-// TODO- add handling for other types of comment delimiters
+// TODO- add handling for // and -- comment delimiters, also leading spaces
 // TODO- validate that diffs match the current state of the file
 // TODO- add tests for malformed ictc blocks
