@@ -132,7 +132,9 @@ stdin - diff references file that does not exist: 'nonexistent.sh'
 
 #[test]
 fn then_change_references_nonexistent_file() -> anyhow::Result<()> {
-    let run = framework::run_tool("tests/data/path-validation/then-change-references-nonexistent-file.diff")?;
+    let run = framework::run_tool(
+        "tests/data/path-validation/then-change-references-nonexistent-file.diff",
+    )?;
 
     assert_eq!(
         run.stdout,

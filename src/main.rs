@@ -82,37 +82,44 @@ fn run() -> Result<()> {
             log::info!("patched file in diff: {}", patched_file.target_file);
         })
         .filter_map(|patched_file| {
-            if patched_file.target_file == "/dev/null" {
-                None
-            } else if is_git_diff {
-                if patched_file.source_file.starts_with("a/")
-                    && patched_file.target_file.starts_with("b/")
-                {
-                    // To strip "a/" and "b/" when it's a "diff --git", we have to do this ourselves: unidiff's PatchedFile
-                    // does not expose metadata about the type of unified diff (that is, --git vs not) and also uses the
-                    // source file by default for `patched_file.path()`
+            if is_git_diff {
+                let source_path_valid = patched_file.source_file.starts_with("a/") || patched_file.source_file == "/dev/null";
+                let target_path_valid = patched_file.target_file.starts_with("b/") || patched_file.target_file == "/dev/null";
+
+                // Do some light git diff validation. There are only two cases where the source file and target file are not
+                // prefixed with "a/" and "b/" respectively: when a file has been added (source file is /dev/null) and when
+                // a file has been deleted (target file is /dev/null).
+                if (!source_path_valid || !target_path_valid) {
+                    diagnostics.push(Diagnostic {
+                        path: "stdin".to_string(),
+                        // TODO- $lines should reference the line where the thenchange comes from
+                        lines: None,
+                        message: format!(
+                            "invalid git diff: expected a/before.path -> b/after.path, but got '{}' -> '{}'",
+                            patched_file.source_file,
+                            patched_file.target_file,
+                        ),
+                    });
+                    return None;
+                }
+
+                if patched_file.target_file.starts_with("b/") {
+                    // In a "diff --git", the pre-diff and post-diff paths are prefixed with "a/" and "b/". We have
+                    // to strip these prefixes ourselves, because unidiff::PatchedFile does not expose metadata about
+                    // whether or not it represents a "diff --git" or normal diff. (PatchedFile.path() does do some
+                    // stripping here, but it uses the source file and is poorly implemented.)
                     Some((patched_file.target_file[2..].to_string(), patched_file))
                 } else {
-                    // Do some light git diff validation. There are only two cases where the source file and target file are not
-                    // prefixed with "a/" and "b/" respectively: when a file has been added (source file is /dev/null) and when
-                    // a file has been deleted (target file is /dev/null).
-                    if patched_file.source_file != "/dev/null"
-                        && patched_file.target_file != "/dev/null"
-                    {
-                        diagnostics.push(Diagnostic {
-                            path: "stdin".to_string(),
-                            // TODO- $lines should reference the line where the thenchange comes from
-                            lines: None,
-                            message: format!(
-                                "invalid git diff: expected a/before.path -> b/after.path, but got '{}' -> '{}'",
-                                patched_file.source_file,
-                                patched_file.target_file,
-                            ),
-                        });
-                    }
+                    // We don't index deleted files in diffs_by_post_diff_path, because we can't read a deleted file
+                    // (after we build this hashmap, the next thing we do is parse if-change-then-change blocks out
+                    // of all files changed in the diff).
                     None
                 }
             } else {
+                if patched_file.target_file == "/dev/null" {
+                    return None;
+                }
+
                 Some((patched_file.target_file.clone(), patched_file))
             }
         })
