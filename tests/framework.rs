@@ -2,8 +2,7 @@ use assert_cmd::prelude::*;
 
 use anyhow::anyhow;
 use std::fs::File;
-use std::io;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct ToolOutput {
