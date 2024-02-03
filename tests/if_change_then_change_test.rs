@@ -165,7 +165,7 @@ stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'a/inv
 
 #[test]
 fn new_file() -> anyhow::Result<()> {
-    let run = framework::run_tool("tests/data/diff-has-path-changes/new-file.diff")?;
+    let run = framework::run_tool("tests/data/diff-has-path-changes/e-new-file.diff")?;
 
     assert_eq!(run.stdout, "");
     assert_eq!(run.exit_code, 0);
@@ -175,7 +175,7 @@ fn new_file() -> anyhow::Result<()> {
 
 #[test]
 fn deleted_file() -> anyhow::Result<()> {
-    let run = framework::run_tool("tests/data/diff-has-path-changes/deleted-file.diff")?;
+    let run = framework::run_tool("tests/data/diff-has-path-changes/f-deleted-file.diff")?;
 
     assert_eq!(
         run.stdout,
@@ -190,12 +190,12 @@ should complain that f1.sh ictc is now orphaned
 
 #[test]
 fn renamed_file() -> anyhow::Result<()> {
-    let run = framework::run_tool("tests/data/diff-has-path-changes/renamed-file.diff")?;
+    let run = framework::run_tool("tests/data/diff-has-path-changes/g-renamed-file.diff")?;
 
     assert_eq!(
         run.stdout,
         "\
-still need to decide what'll go here
+still need to decide what'll go here for renamed file
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -205,7 +205,7 @@ still need to decide what'll go here
 
 #[test]
 fn copied_file() -> anyhow::Result<()> {
-    let run = framework::run_tool("tests/data/diff-has-path-changes/copied-file.diff")?;
+    let run = framework::run_tool("tests/data/diff-has-path-changes/h-copied-file.diff")?;
 
     assert_eq!(
         run.stdout,
