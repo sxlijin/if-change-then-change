@@ -3,8 +3,7 @@ export AWS_PROFILE=production
 export VERSION="0.3.1-alpha"
 # then-change
 #   build.sh
-#   push.sh
-# fi-change
+# end-change
 
 echo "checking AWS credentials to ensure they're valid"
 echo "checking k8s credentials to ensure they're valid"

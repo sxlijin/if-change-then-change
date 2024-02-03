@@ -4,7 +4,7 @@ export VERSION="0.3.1"
 # then-change
 #   build.sh
 #   release.sh
-# fi-change
+# end-change
 
 echo "checking AWS credentials to ensure they're valid"
 echo "sanity-check: verifying that all changes have been committed"

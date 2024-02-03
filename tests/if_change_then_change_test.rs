@@ -224,3 +224,4 @@ still need to decide what'll go here
 // TODO- add test case for renamed file
 // TODO- add test case for LFS diff
 // TODO- "then-change references file that does not exist" points at the wrong line number
+// TODO- add handling for other types of comment delimiters

@@ -92,13 +92,13 @@ impl IfChangeThenChange {
                 } else {
                     errors.push("no if-change preceding this then-change".to_string());
                 }
-            } else if line.starts_with("# fi-change") {
+            } else if line.starts_with("# end-change") {
                 match curr {
                     Some(ictc) => {
                         ret.insert(ictc.key.block_name.clone(), ictc);
                     }
                     None => errors.push(
-                        "fi-change found on line ??? but does not match a preceding then-change"
+                        "end-change found on line ??? but does not match a preceding then-change"
                             .to_string(),
                     ),
                 }
@@ -107,7 +107,8 @@ impl IfChangeThenChange {
                 if let Some(ictc) = &mut curr {
                     if !ictc.content_range.is_empty() {
                         ictc.then_change.push(BlockKey {
-                            path: line.to_string(),
+                            // TODO- this needs to be more robust
+                            path: line["# ".len()..].trim_start_matches(" ").to_string(),
                             // TODO- implement block name parsing
                             block_name: "".to_string(),
                         });
@@ -126,7 +127,7 @@ mod test {
     use anyhow::anyhow;
 
     #[test]
-    fn basic() -> anyhow::Result<()> {
+    fn then_change_one_file() -> anyhow::Result<()> {
         let parsed = IfChangeThenChange::from_str(
             "if-change.foo",
             "\
@@ -153,6 +154,49 @@ amet",
                     path: "then-change.foo".to_string(),
                     block_name: "".to_string(),
                 }],
+            }
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn then_change_two_files() -> anyhow::Result<()> {
+        let parsed = IfChangeThenChange::from_str(
+            "if-change.foo",
+            "\
+lorem
+# if-change
+ipsum
+dolor
+sit
+# then-change
+#   then-change1.foo
+#   then-change2.foo
+# end-change
+amet",
+        );
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(
+            *parsed
+                .get("")
+                .ok_or(anyhow!("Did not parse an if-change-then-change block"))?,
+            IfChangeThenChange {
+                key: BlockKey {
+                    path: "if-change.foo".to_string(),
+                    block_name: "".to_string(),
+                },
+                content_range: 2..5,
+                then_change: vec![
+                    BlockKey {
+                        path: "then-change1.foo".to_string(),
+                        block_name: "".to_string(),
+                    },
+                    BlockKey {
+                        path: "then-change2.foo".to_string(),
+                        block_name: "".to_string(),
+                    }
+                ],
             }
         );
 
