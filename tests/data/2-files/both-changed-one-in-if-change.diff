@@ -1,0 +1,21 @@
+diff --git a/tests/data/keep-2-files-in-sync/a.sh b/tests/data/keep-2-files-in-sync/a.sh
+index f4ba23f..435dfe7 100644
+--- a/tests/data/keep-2-files-in-sync/a.sh
++++ b/tests/data/keep-2-files-in-sync/a.sh
+@@ -1,5 +1,6 @@
+ export LOG="thumbnail=debug;video=info;"
+ # if-change
++export THUMBNAIL_BUCKET="s3://video-thumbnails/"
+ export VIDEO_BUCKET="s3://video-service/"
+ # then-change tests/data/keep-2-files-in-sync/b.sh
+ export VIDEO_CONFIG="video-service/config.json"
+diff --git a/tests/data/keep-2-files-in-sync/b.sh b/tests/data/keep-2-files-in-sync/b.sh
+index 02b251f..2353710 100644
+--- a/tests/data/keep-2-files-in-sync/b.sh
++++ b/tests/data/keep-2-files-in-sync/b.sh
+@@ -1,4 +1,5 @@
+ echo "building video service"
++echo "indexing video assets"
+ # if-change
+ echo "serving from s3://video-service/ and s3://video-thumbnails/"
+ # then-change tests/data/keep-2-files-in-sync/a.sh

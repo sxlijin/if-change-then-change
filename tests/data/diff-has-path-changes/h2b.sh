@@ -1,4 +1,4 @@
-echo "starting replica a of catalog-service"
+echo "starting replica b of catalog-service"
 echo "indexing bookshop catalogs"
 echo "indexing library catalogs"
 # if-change

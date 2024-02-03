@@ -9,7 +9,7 @@ fn both_changed_both_added_lines_in_if_change() -> anyhow::Result<()> {
     //   a.sh and b.sh contain if-change-then-change
     //   a.sh and b.sh changed in if-change block
     let run =
-        framework::run_tool("tests/data/basic/both-changed-both-added-lines-in-if-change.diff")?;
+        framework::run_tool("tests/data/2-files/both-changed-both-added-lines-in-if-change.diff")?;
 
     assert_eq!(run.stdout, "");
     assert_eq!(run.exit_code, 0);
@@ -22,8 +22,9 @@ fn both_changed_both_removed_lines_in_if_change() -> anyhow::Result<()> {
     // both a.sh and b.sh changed
     //   a.sh and b.sh contain if-change-then-change
     //   a.sh and b.sh changed in if-change block
-    let run =
-        framework::run_tool("tests/data/basic/both-changed-both-removed-lines-in-if-change.diff")?;
+    let run = framework::run_tool(
+        "tests/data/2-files/both-changed-both-removed-lines-in-if-change.diff",
+    )?;
 
     assert_eq!(run.stdout, "");
     assert_eq!(run.exit_code, 0);
@@ -37,12 +38,12 @@ fn both_changed_one_in_if_change() -> anyhow::Result<()> {
     //   a.sh and b.sh contain if-change-then-change
     //   a.sh changed in if-change block
     //   b.sh changed outside if-change block
-    let run = framework::run_tool("tests/data/basic/both-changed-one-in-if-change.diff")?;
+    let run = framework::run_tool("tests/data/2-files/both-changed-one-in-if-change.diff")?;
 
     assert_eq!(
         run.stdout,
         "\
-tests/data/basic/b.sh:4 - expected change here due to change in tests/data/basic/a.sh:3-4
+tests/data/2-files/b.sh:4 - expected change here due to change in tests/data/2-files/a.sh:3-4
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -73,12 +74,12 @@ tests/data/one-file-missing-if-change/d.sh - expected if-change-then-change in t
 fn one_changed_in_if_change() -> anyhow::Result<()> {
     // a.sh changed in if-change, then-change points at b.sh
     // b.sh contains an if-change-then-change pointing back at a.sh
-    let run = framework::run_tool("tests/data/basic/one-changed-in-if-change.diff")?;
+    let run = framework::run_tool("tests/data/2-files/one-changed-in-if-change.diff")?;
 
     assert_eq!(
         run.stdout,
         "\
-tests/data/basic/b.sh:4 - expected change here due to change in tests/data/basic/a.sh:3-4
+tests/data/2-files/b.sh:4 - expected change here due to change in tests/data/2-files/a.sh:3-4
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -195,9 +196,11 @@ fn renamed_file() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-still need to decide what'll go here for renamed file
+g1.sh:5 - then-change points at g2.sh, but g2.sh was deleted
 "
     );
+    // may need spectral for this
+    assert!(!run.stdout.contains("g3.sh:5 - g1.sh was not modified"));
     assert_eq!(run.exit_code, 0);
 
     Ok(())
