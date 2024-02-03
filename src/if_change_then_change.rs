@@ -245,7 +245,7 @@ amet",
     }
 
     #[test]
-    fn then_change_all_comment_formats() -> anyhow::Result<()> {
+    fn handles_all_indentation_levels() -> anyhow::Result<()> {
         let parsed = IfChangeThenChange::from_str(
             "if-change.foo",
             "\
@@ -254,17 +254,22 @@ lorem
 ipsum
 dolor
 sit
-# then-change then-change.foo
+# then-change then-change1.foo
 amet
 
+    # if-change
     consectetur
     adipiscing
     elit
+    # then-change then-change2.foo
+
+        # if-change
     sed
     do
     eiusmod
     tempor
     incididunt
+    # then-change then-change3.foo
 ut
 labore
 et
@@ -277,6 +282,66 @@ ad
 minim
 veniam
 
+",
+        );
+        assert_that!(parsed).has_length(1);
+        assert_that!(parsed).contains_entry(
+            "".to_string(),
+            IfChangeThenChange {
+                key: BlockKey {
+                    path: "if-change.foo".to_string(),
+                    block_name: "".to_string(),
+                },
+                content_range: 2..5,
+                then_change: vec![BlockKey {
+                    path: "then-change.foo".to_string(),
+                    block_name: "".to_string(),
+                }],
+            },
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn handles_all_comment_formats() -> anyhow::Result<()> {
+        let parsed = IfChangeThenChange::from_str(
+            "if-change.foo",
+            "\
+lorem
+# if-change
+ipsum
+dolor
+sit
+# then-change then-change1.foo
+amet
+
+// if-change
+consectetur
+adipiscing
+elit
+// then-change then-change2.foo
+
+sed
+do
+-- if-change
+eiusmod
+tempor
+-- then-change then-change3.foo
+incididunt
+ut
+
+// IDK if I like allowing mismatched comment formats to line up
+// with each other, but this is easier to implement than asserting
+// that comment formats must match (plus, I don't see the value in
+// adding handling for mismatched comment formats)
+-- if-change
+labore
+et
+dolore
+magna
+aliqua
+// then-change then-change4.foo
 ",
         );
         assert_that!(parsed).has_length(1);
