@@ -1,0 +1,22 @@
+diff --git invalid-before0.txt b/invalid-after0.txt
+index 771ac22..dc8ee1c 100644
+--- invalid-before0.txt
++++ b/invalid-after0.txt
+@@ -2,5 +2,6 @@ starting watchdog thread
+ starting handler for /health
+ # if-change
+ starting handler for /image-api/v1
++starting handler for /thumbnail-api/v1
+ starting handler for /video-api/v1
+ # then-change nonexistent.cfg
+diff --git a/invalid-before1.txt invalid-after1.txt
+index 771ac22..dc8ee1c 100644
+--- a/invalid-before1.txt
++++ invalid-after1.txt
+@@ -2,5 +2,6 @@ starting watchdog thread
+ starting handler for /health
+ # if-change
+ starting handler for /image-api/v1
++starting handler for /thumbnail-api/v1
+ starting handler for /video-api/v1
+ # then-change nonexistent.cfg

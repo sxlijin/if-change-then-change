@@ -78,21 +78,43 @@ fn run() -> Result<()> {
     let diffs_by_post_diff_path = patch_set
         .files()
         .iter()
-        .map(|patched_file| {
-            let post_diff_path = {
-                if is_git_diff
-                    && patched_file.source_file.starts_with("a/")
+        .inspect(|patched_file| {
+            log::info!("patched file in diff: {}", patched_file.target_file);
+        })
+        .filter_map(|patched_file| {
+            if patched_file.target_file == "/dev/null" {
+                None
+            } else if is_git_diff {
+                if patched_file.source_file.starts_with("a/")
                     && patched_file.target_file.starts_with("b/")
                 {
                     // To strip "a/" and "b/" when it's a "diff --git", we have to do this ourselves: unidiff's PatchedFile
                     // does not expose metadata about the type of unified diff (that is, --git vs not) and also uses the
                     // source file by default for `patched_file.path()`
-                    patched_file.target_file[2..].to_string()
+                    Some((patched_file.target_file[2..].to_string(), patched_file))
                 } else {
-                    patched_file.target_file.to_string()
+                    // Do some light git diff validation. There are only two cases where the source file and target file are not
+                    // prefixed with "a/" and "b/" respectively: when a file has been added (source file is /dev/null) and when
+                    // a file has been deleted (target file is /dev/null).
+                    if patched_file.source_file != "/dev/null"
+                        && patched_file.target_file != "/dev/null"
+                    {
+                        diagnostics.push(Diagnostic {
+                            path: "-".to_string(),
+                            // TODO- $lines should reference the line where the thenchange comes from
+                            lines: None,
+                            message: format!(
+                                "invalid git diff: expected a/before.path -> b/after.path, but got '{}' -> '{}'",
+                                patched_file.source_file,
+                                patched_file.target_file,
+                            ),
+                        });
+                    }
+                    None
                 }
-            };
-            (post_diff_path, patched_file)
+            } else {
+                Some((patched_file.target_file.clone(), patched_file))
+            }
         })
         .collect::<HashMap<String, &unidiff::PatchedFile>>();
 

@@ -1,7 +1,7 @@
-diff --git a/tests/data/basic/z.sh b/tests/data/basic/z.sh
+diff --git a/tests/data/path-validation/z.sh b/tests/data/basic/z.sh
 deleted file mode 100644
 index 771ac22..0000000
---- a/tests/data/basic/z.sh
+--- a/tests/data/path-validation/z.sh
 +++ /dev/null
 @@ -1,6 +0,0 @@
 -echo "starting watchdog thread"

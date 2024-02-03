@@ -1,7 +1,7 @@
-diff --git a/tests/data/basic/z.sh b/tests/data/basic/z.sh
+diff --git a/tests/data/path-validation/z.sh b/tests/data/basic/z.sh
 index 771ac22..dc8ee1c 100644
---- a/tests/data/basic/z.sh
-+++ b/tests/data/basic/z.sh
+--- a/tests/data/path-validation/z.sh
++++ b/tests/data/path-validation/z.sh
 @@ -2,5 +2,6 @@ echo "starting watchdog thread"
  echo "starting handler for /health"
  # if-change
