@@ -3,6 +3,7 @@ use test_log::test;
 
 mod framework;
 
+mod two_files {}
 #[test]
 fn both_changed_both_added_lines_in_if_change() -> anyhow::Result<()> {
     // both a.sh and b.sh changed
@@ -221,8 +222,54 @@ still need to decide what'll go here
     Ok(())
 }
 
-// TODO- add test case for renamed file
+#[test]
+fn three_files() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/3-files/change.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+still need to decide what'll go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn three_files_incomplete() -> anyhow::Result<()> {
+    // 2 of the 3 files do not point at all of the others
+    let run = framework::run_tool("tests/data/3-files-incomplete/change.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+still need to decide what'll go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn five_files() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/5-files/change.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+still need to decide what'll go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
 // TODO- add test case for LFS diff
 // TODO- "then-change references file that does not exist" points at the wrong line number
 // TODO- add handling for other types of comment delimiters
 // TODO- validate that diffs match the current state of the file
+// TODO- add tests for malformed ictc blocks

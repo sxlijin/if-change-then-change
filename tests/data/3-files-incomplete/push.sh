@@ -2,8 +2,8 @@ export AWS_PROFILE=production
 # if-change
 export VERSION="0.3.1-alpha"
 # then-change
-#   build.sh
-#   release.sh
+#   tests/data/3-files-incomplete/build.sh
+#   tests/data/3-files-incomplete/release.sh
 # end-change
 
 echo "checking AWS credentials to ensure they're valid"

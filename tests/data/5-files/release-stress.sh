@@ -2,10 +2,11 @@ export AWS_PROFILE=stress
 # if-change
 export VERSION="0.3.1-alpha"
 # then-change
-#   build.sh
-#   push.sh
-#   release-prod.sh
-#   release-staging.sh
+#   tests/data/5-files/build.sh
+#   tests/data/5-files/push.sh
+#   tests/data/5-files/release-prod.sh
+#   tests/data/5-files/release-stress.sh
+# end-change
 
 echo "checking AWS credentials to ensure they're valid"
 echo "checking k8s credentials to ensure they're valid"

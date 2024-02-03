@@ -8,5 +8,5 @@ index 26d7af2..35afb10 100644
 -export VERSION="0.1.5-beta"
 +export VERSION="0.3.1-alpha"
  # then-change
- #   build.sh
- #   release.sh
+ #   tests/data/3-files-incomplete/build.sh
+ #   tests/data/3-files-incomplete/release.sh

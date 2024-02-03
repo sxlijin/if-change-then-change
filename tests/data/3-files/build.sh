@@ -2,8 +2,8 @@ export BUILD_PATH="target/opt/hello-world"
 # if-change
 export VERSION="0.3.1-alpha"
 # then-change
-#   push.sh
-#   release.sh
+#   tests/data/3-files/push.sh
+#   tests/data/3-files/release.sh
 # fi-change
 
 echo "set up build env step 1 of 3"
