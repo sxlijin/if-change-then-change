@@ -131,9 +131,8 @@ fn run() -> Result<()> {
     //   2. for every ictc block, also parse every path in a then-change block
     //
     // i.e. we do a BFS 1 layer deep. This is sufficient for well-formed paths, but unclear if it's sufficient for more complex forms.
-    let file_node_by_path = {
+    let file_nodes_by_path = {
         let mut first_pass = HashMap::new();
-
         for path in diffs_by_post_diff_path.keys() {
             let Ok(file_contents) = std::fs::read_to_string(path) else {
                 diagnostics.push(Diagnostic {
@@ -154,11 +153,11 @@ fn run() -> Result<()> {
         for (path, mut file_node) in first_pass {
             file_node.blocks = file_node
                 .blocks
-                .drain(..)
+                .into_iter()
                 .map(|mut block| {
                     block.then_change = block
                         .then_change
-                        .drain(..)
+                        .into_iter()
                         .filter(|then_change_key| {
                             if diffs_by_post_diff_path.contains_key(&then_change_key.path) {
                                 return true;
@@ -210,7 +209,7 @@ fn run() -> Result<()> {
     let modified_blocks_by_path = {
         let mut modified_blocks_by_path = HashMap::new();
 
-        for (path, file_node) in file_node_by_path.iter() {
+        for (path, file_node) in file_nodes_by_path.iter() {
             let Some(&diff) = diffs_by_post_diff_path.get(path) else {
                 continue;
             };
@@ -275,7 +274,7 @@ fn run() -> Result<()> {
             }
 
             let mut block_range = None;
-            if let Some(ictc_blocks) = file_node_by_path.get(&then_change_key.path) {
+            if let Some(ictc_blocks) = file_nodes_by_path.get(&then_change_key.path) {
                 if let Some(ictc_block) = ictc_blocks.get_corresponding_block(&ictc_block) {
                     block_range = Some(ictc_block.content_range.clone());
                 }
