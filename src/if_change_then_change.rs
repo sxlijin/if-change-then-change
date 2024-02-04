@@ -263,6 +263,10 @@ amet
     elit
     # then-change then-change2.foo
 
+// IDK if I like allowing mismatched indentation levels to match up
+// with each other, but this is easier to implement than asserting
+// that comment formats must match (plus, I don't see the value in
+// adding handling for mismatches)
         # if-change
     sed
     do
@@ -272,16 +276,6 @@ amet
     # then-change then-change3.foo
 ut
 labore
-et
-dolore
-magna
-aliqua.
-Ut
-enim
-ad
-minim
-veniam
-
 ",
         );
         assert_that!(parsed).has_length(1);
@@ -334,7 +328,7 @@ ut
 // IDK if I like allowing mismatched comment formats to line up
 // with each other, but this is easier to implement than asserting
 // that comment formats must match (plus, I don't see the value in
-// adding handling for mismatched comment formats)
+// adding handling for mismatches)
 -- if-change
 labore
 et
