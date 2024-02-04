@@ -45,7 +45,7 @@ fn run() -> Result<()> {
                 if !source_path_valid || !target_path_valid {
                     diagnostics.push(Diagnostic {
                         path: "stdin".to_string(),
-                        // TODO- $lines should reference the line where the thenchange comes from
+                        // TODO- $lines should reference the lines of the diff
                         lines: None,
                         message: format!(
                             "invalid git diff: expected a/before.path -> b/after.path, but got '{}' -> '{}'",
