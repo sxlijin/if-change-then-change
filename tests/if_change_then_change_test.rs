@@ -307,6 +307,7 @@ tests/data/3-files/push.sh:2-7 - expected change here due to change in tests/dat
 }
 
 #[test]
+#[ignore]
 fn three_files_incomplete() -> anyhow::Result<()> {
     // "incomplete" because 2 of the 3 files do not point at all of the other files
     let run = framework::run_tool("tests/data/3-files-incomplete/change.diff")?;
@@ -323,14 +324,16 @@ still need to decide what'll go here
 }
 
 #[test]
-#[ignore]
 fn five_files() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/5-files/change.diff")?;
 
     assert_eq!(
         run.stdout,
         "\
-still need to decide what'll go here
+tests/data/5-files/push.sh:2-10 - expected change here due to change in tests/data/5-files/build.sh:2-10
+tests/data/5-files/release-prod.sh:2-10 - expected change here due to change in tests/data/5-files/build.sh:2-10
+tests/data/5-files/release-staging.sh:2-10 - expected change here due to change in tests/data/5-files/build.sh:2-10
+tests/data/5-files/release-stress.sh:2-10 - expected change here due to change in tests/data/5-files/build.sh:2-10
 "
     );
     assert_eq!(run.exit_code, 0);

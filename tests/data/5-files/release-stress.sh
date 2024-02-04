@@ -5,6 +5,7 @@ export VERSION="0.3.1-alpha"
 #   tests/data/5-files/build.sh
 #   tests/data/5-files/push.sh
 #   tests/data/5-files/release-prod.sh
+#   tests/data/5-files/release-staging.sh
 #   tests/data/5-files/release-stress.sh
 # end-change
 

@@ -2,6 +2,7 @@ export BUILD_PATH="target/opt/hello-world"
 # if-change
 export VERSION="0.3.1-alpha"
 # then-change
+#   tests/data/5-files/build.sh
 #   tests/data/5-files/push.sh
 #   tests/data/5-files/release-prod.sh
 #   tests/data/5-files/release-staging.sh
