@@ -46,7 +46,8 @@ fn run() -> Result<()> {
                     diagnostics.push(Diagnostic {
                         path: "stdin".to_string(),
                         // TODO- $lines should reference the lines of the diff
-                        lines: None,
+                        start_line: None,
+                        end_line: None,
                         message: format!(
                             "invalid git diff: expected a/before.path -> b/after.path, but got '{}' -> '{}'",
                             patched_file.source_file,
@@ -93,7 +94,8 @@ fn run() -> Result<()> {
                     // TODO- if a file is deleted, the post-diff path is... /dev/null?
                     path: "stdin".to_string(),
                     // TODO- $lines should reference the diff line pointing at $path
-                    lines: None,
+                    start_line: None,
+                    end_line: None,
                     // TODO- read_to_string can fail for other reasons (e.g.
                     // $path is a dir, $path does not allow reads)
                     message: format!("diff references file that does not exist: '{}'", path),
@@ -132,7 +134,8 @@ fn run() -> Result<()> {
                             else {
                                 diagnostics.push(Diagnostic {
                                     path: block.key.path.clone(),
-                                    lines: Some(*then_change_lineno..*then_change_lineno + 1),
+                                    start_line: Some(*then_change_lineno),
+                                    end_line: None,
                                     message: format!(
                                         "then-change references file that does not exist: '{}'",
                                         then_change_key.path
@@ -249,12 +252,14 @@ fn run() -> Result<()> {
             if block_range.is_none() {
                 diagnostics.push(Diagnostic {
                     path: then_change_key.path.clone(),
-                    lines: None,
+                    start_line: block_range.as_ref().map(|range| range.start),
+                    end_line: block_range.as_ref().map(|range| range.end),
                     message: format!(
                         "expected an if-change-then-change in this file that matches {}",
                         DiagnosticPosition {
                             path: &ictc_block.key.path,
-                            lines: Some(&ictc_block.content_range()),
+                            start_line: Some(ictc_block.content_range().start),
+                            end_line: Some(ictc_block.content_range().end),
                         },
                     ),
                 });
@@ -264,12 +269,14 @@ fn run() -> Result<()> {
             {
                 diagnostics.push(Diagnostic {
                     path: then_change_key.path.clone(),
-                    lines: block_range,
+                    start_line: block_range.as_ref().map(|range| range.start),
+                    end_line: block_range.as_ref().map(|range| range.end),
                     message: format!(
                         "expected change here due to change in {}",
                         DiagnosticPosition {
                             path: &ictc_block.key.path,
-                            lines: Some(&ictc_block.content_range()),
+                            start_line: Some(ictc_block.content_range().start),
+                            end_line: Some(ictc_block.content_range().end),
                         },
                     ),
                 });
@@ -277,8 +284,7 @@ fn run() -> Result<()> {
         }
     }
 
-    // TODO- implement a better ordering scheme
-    diagnostics.sort_by_key(|d| format!("{}", d));
+    diagnostics.sort();
 
     for diagnostic in diagnostics {
         println!("{}", diagnostic);

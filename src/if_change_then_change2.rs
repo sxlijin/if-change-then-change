@@ -45,7 +45,8 @@ impl<'a> Parser<'a> {
     fn record_error(&mut self, lineno: usize, message: &str) {
         self.errors.push(Diagnostic {
             path: self.input_path.to_string(),
-            lines: Some(lineno..lineno + 1),
+            start_line: Some(lineno),
+            end_line: None,
             message: message.to_string(),
         })
     }
