@@ -351,10 +351,13 @@ pub struct BlockNode {
 }
 
 impl BlockNode {
+    // The line range which we expect to see a modification in.
+    //
+    // It's important that this encompasses the delimiting if-change and then-change
+    // directives, because that allows us to handle changes to those clauses correctly,
+    // e.g. when we're wrapping existing code in if-change-then-change clauses.
     pub fn content_range(&self) -> Range<usize> {
-        self.if_change_lineno + 1..self.then_change_lineno
-        // TODO- this should be the full content range
-        //self.if_change_lineno..self.end_change_lineno + 1
+        self.if_change_lineno..self.end_change_lineno + 1
     }
 }
 

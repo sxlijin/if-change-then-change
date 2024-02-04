@@ -44,7 +44,7 @@ fn both_changed_one_in_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/2-files/b.sh:4 - expected change here due to change in tests/data/2-files/a.sh:3-4
+tests/data/2-files/b.sh:3-5 - expected change here due to change in tests/data/2-files/a.sh:2-5
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -80,7 +80,7 @@ fn one_changed_in_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/2-files/b.sh:4 - expected change here due to change in tests/data/2-files/a.sh:3-4
+tests/data/2-files/b.sh:3-5 - expected change here due to change in tests/data/2-files/a.sh:2-5
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -97,7 +97,7 @@ fn one_changed_in_if_change_other_missing_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/one-file-missing-if-change/d.sh - expected change here due to change in tests/data/one-file-missing-if-change/c.sh:3-4
+tests/data/one-file-missing-if-change/d.sh - expected change here due to change in tests/data/one-file-missing-if-change/c.sh:2-5
 tests/data/one-file-missing-if-change/d.sh - expected if-change-then-change in this file due to if-change in tests/data/one-file-missing-if-change/c.sh
 "
     );
@@ -113,8 +113,8 @@ fn file_with_2_blocks___both_blocks_changed() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/file-with-2-blocks/b1.sh:3 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:3-4
-tests/data/file-with-2-blocks/b2.sh:3 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:8-9
+tests/data/file-with-2-blocks/b1.sh:2-4 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:2-5
+tests/data/file-with-2-blocks/b2.sh:2-4 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:7-10
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -129,8 +129,8 @@ fn file_with_2_blocks___both_blocks_missing_changes() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/file-with-2-blocks/a.sh:3-4 - expected change here due to change in tests/data/file-with-2-blocks/b1.sh:3
-tests/data/file-with-2-blocks/a.sh:8-9 - expected change here due to change in tests/data/file-with-2-blocks/b2.sh:3
+tests/data/file-with-2-blocks/a.sh:2-5 - expected change here due to change in tests/data/file-with-2-blocks/b1.sh:2-4
+tests/data/file-with-2-blocks/a.sh:7-10 - expected change here due to change in tests/data/file-with-2-blocks/b2.sh:2-4
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -145,8 +145,8 @@ fn file_with_2_blocks___1st_block_changed_2nd_block_missing_change() -> anyhow::
     assert_eq!(
         run.stdout,
         "\
-tests/data/file-with-2-blocks/a.sh:8-9 - expected change here due to change in tests/data/file-with-2-blocks/b2.sh:3
-tests/data/file-with-2-blocks/b1.sh:3 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:3-4
+tests/data/file-with-2-blocks/a.sh:7-10 - expected change here due to change in tests/data/file-with-2-blocks/b2.sh:2-4
+tests/data/file-with-2-blocks/b1.sh:2-4 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:2-5
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -161,8 +161,8 @@ fn file_with_2_blocks___1st_block_missing_change_2nd_block_changed() -> anyhow::
     assert_eq!(
         run.stdout,
         "\
-tests/data/file-with-2-blocks/a.sh:3-4 - expected change here due to change in tests/data/file-with-2-blocks/b1.sh:3
-tests/data/file-with-2-blocks/b2.sh:3 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:8-9
+tests/data/file-with-2-blocks/a.sh:2-5 - expected change here due to change in tests/data/file-with-2-blocks/b1.sh:2-4
+tests/data/file-with-2-blocks/b2.sh:2-4 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:7-10
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -205,7 +205,7 @@ fn then_change_references_nonexistent_file() -> anyhow::Result<()> {
     assert_eq!(
             run.stdout,
             "\
-tests/data/path-validation/z.sh:4-6 - then-change references file that does not exist: 'nonexistent.cfg'
+tests/data/path-validation/z.sh:3-7 - then-change references file that does not exist: 'nonexistent.cfg'
 "
         );
     assert_eq!(run.exit_code, 0);
