@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 // Represents all if-change-then-change nodes found within a single file.
+#[derive(Debug)]
 pub struct FileNode {
     pub blocks: Vec<BlockNode>,
 }
@@ -24,7 +25,7 @@ impl FileNode {
     }
 
     // TODO: errors should hand back meaningful diagnostics about the malformed ictc
-    pub fn from_str(path: &str, s: &str) -> FileNode {
+    pub fn from_str(path: &str, s: &str) -> anyhow::Result<FileNode> {
         let mut ret = Vec::new();
         let mut curr: Option<BlockNode> = None;
         let mut errors: Vec<String> = Vec::new();
@@ -99,7 +100,7 @@ impl FileNode {
         }
 
         // DO NOT LAND- throw if errors is non-empty
-        FileNode::new(ret)
+        Ok(FileNode::new(ret))
     }
 }
 
@@ -162,7 +163,7 @@ sit
 # then-change then-change.foo
 amet
 ",
-        );
+        )?;
         assert_that!(parsed.blocks).has_length(1);
         assert_that!(parsed.blocks).is_equal_to(vec![BlockNode {
             key: BlockKey {
@@ -194,7 +195,7 @@ sit
 #   then-change2.foo
 # end-change
 amet",
-        );
+        )?;
         assert_that!(parsed.blocks).has_length(1);
         assert_that!(parsed.blocks).is_equal_to(vec![BlockNode {
             key: BlockKey {
@@ -233,7 +234,7 @@ sit
 #   then-change2.foo
 # end-change
 amet",
-        );
+        )?;
         assert_that!(parsed.blocks).has_length(1);
         assert_that!(parsed.blocks).is_equal_to(vec![BlockNode {
             key: BlockKey {
@@ -372,6 +373,48 @@ amet",
 
     //         Ok(())
     //     }
+
+    #[test]
+    fn error_when_then_change_not_closed() -> anyhow::Result<()> {
+        let parsed = FileNode::from_str(
+            "if-change.foo",
+            "\
+lorem
+# if-change
+ipsum
+dolor
+sit
+# then-change
+#   then-change.foo
+amet
+then-change is not closed
+",
+        );
+        assert_that!(parsed).is_err();
+
+        Ok(())
+    }
+
+    #[test]
+    fn error_when_if_change_not_closed() -> anyhow::Result<()> {
+        let parsed = FileNode::from_str(
+            "if-change.foo",
+            "\
+lorem
+# if-change
+ipsum
+# if-change
+dolor
+sit
+# then-change then-change.foo
+amet
+then-change is not closed
+",
+        );
+        assert_that!(parsed).is_err();
+
+        Ok(())
+    }
 
     #[test]
     fn rangemap_test() -> anyhow::Result<()> {

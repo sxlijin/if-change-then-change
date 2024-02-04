@@ -5,6 +5,7 @@ use std::io::Read;
 use std::ops::Range;
 
 mod if_change_then_change;
+mod if_change_then_change2;
 
 struct DiagnosticPosition<'a> {
     path: &'a String,
@@ -145,8 +146,14 @@ fn run() -> Result<()> {
                 });
                 continue;
             };
-            let file_node = if_change_then_change::FileNode::from_str(path, &file_contents);
-            first_pass.insert(path.clone(), file_node);
+            match if_change_then_change::FileNode::from_str(path, &file_contents) {
+                Ok(file_node) => {
+                    first_pass.insert(path.clone(), file_node);
+                }
+                Err(_) => {
+                    // TODO- append diagnostics
+                }
+            }
         }
 
         let mut second_pass = HashMap::new();
@@ -179,11 +186,17 @@ fn run() -> Result<()> {
                                 });
                                 return false;
                             };
-                            let file_node = if_change_then_change::FileNode::from_str(
+                            match if_change_then_change::FileNode::from_str(
                                 &then_change_key.path,
                                 &file_contents,
-                            );
-                            second_pass.insert(then_change_key.path.clone(), file_node);
+                            ) {
+                                Ok(file_node) => {
+                                    second_pass.insert(path.clone(), file_node);
+                                }
+                                Err(_) => {
+                                    // TODO- append diagnostics
+                                }
+                            };
                             true
                         })
                         .collect();

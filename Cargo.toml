@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.79"
+derive_builder = "0.13.0"
 env_logger = "0.11.1"
 log = "0.4.20"
 rangemap = "1.4.0"
