@@ -131,7 +131,7 @@ fn run() -> Result<()> {
     //   2. for every ictc block, also parse every path in a then-change block
     //
     // i.e. we do a BFS 1 layer deep. This is sufficient for well-formed paths, but unclear if it's sufficient for more complex forms.
-    let ictc_by_blockname_by_path = {
+    let file_node_by_path = {
         let mut first_pass = HashMap::new();
 
         for path in diffs_by_post_diff_path.keys() {
@@ -146,60 +146,53 @@ fn run() -> Result<()> {
                 });
                 continue;
             };
-            let ictc_by_block_name =
-                if_change_then_change::FileNode::from_str(path, &file_contents);
-            first_pass.insert(path.clone(), ictc_by_block_name);
+            let file_node = if_change_then_change::FileNode::from_str(path, &file_contents);
+            first_pass.insert(path.clone(), file_node);
         }
 
         let mut second_pass = HashMap::new();
-        for (path, file_node) in first_pass.iter() {
-            let validated_file_node = if_change_then_change::FileNode::new(
-                file_node
-                    .blocks
-                    .iter()
-                    .map(|block| {
-                        // some comment
-                        let mut block2 = block.clone();
+        for (path, mut file_node) in first_pass {
+            file_node.blocks = file_node
+                .blocks
+                .drain(..)
+                .map(|mut block| {
+                    block.then_change = block
+                        .then_change
+                        .drain(..)
+                        .filter(|then_change_key| {
+                            if diffs_by_post_diff_path.contains_key(&then_change_key.path) {
+                                return true;
+                            }
+                            if block.key.path == then_change_key.path {
+                                // We silently ignore self-referential then-change entries.
+                                return false;
+                            }
+                            let Ok(file_contents) = std::fs::read_to_string(&then_change_key.path)
+                            else {
+                                diagnostics.push(Diagnostic {
+                                    path: block.key.path.clone(),
+                                    // TODO- $lines should reference the line where the thenchange comes from
+                                    lines: Some(block.content_range.clone()),
+                                    message: format!(
+                                        "then-change references file that does not exist: '{}'",
+                                        then_change_key.path
+                                    ),
+                                });
+                                return false;
+                            };
+                            let file_node = if_change_then_change::FileNode::from_str(
+                                &then_change_key.path,
+                                &file_contents,
+                            );
+                            second_pass.insert(then_change_key.path.clone(), file_node);
+                            true
+                        })
+                        .collect();
 
-                        block2.then_change = block2
-                            .then_change
-                            .drain(..)
-                            .filter(|then_change_key| {
-                                if diffs_by_post_diff_path.contains_key(&then_change_key.path) {
-                                    return true;
-                                }
-                                if block2.key.path == then_change_key.path {
-                                    return false;
-                                }
-                                let Ok(file_contents) =
-                                    std::fs::read_to_string(&then_change_key.path)
-                                else {
-                                    diagnostics.push(Diagnostic {
-                                        path: block2.key.path.clone(),
-                                        // TODO- $lines should reference the line where the thenchange comes from
-                                        lines: Some(block2.content_range.clone()),
-                                        message: format!(
-                                            "then-change references file that does not exist: '{}'",
-                                            then_change_key.path
-                                        ),
-                                    });
-                                    return false;
-                                };
-                                let ictc_by_block_name = if_change_then_change::FileNode::from_str(
-                                    &then_change_key.path,
-                                    &file_contents,
-                                );
-                                second_pass
-                                    .insert(then_change_key.path.clone(), ictc_by_block_name);
-                                true
-                            })
-                            .collect();
-
-                        block2
-                    })
-                    .collect(),
-            );
-            second_pass.insert(path.clone(), validated_file_node);
+                    block
+                })
+                .collect();
+            second_pass.insert(path, file_node);
         }
 
         second_pass
@@ -217,8 +210,8 @@ fn run() -> Result<()> {
     let modified_blocks_by_key = {
         let mut modified_blocks_by_key = HashSet::new();
 
-        for ictc_by_block_name in ictc_by_blockname_by_path.values() {
-            for ictc_block in ictc_by_block_name.blocks.iter() {
+        for file_node in file_node_by_path.values() {
+            for ictc_block in file_node.blocks.iter() {
                 let Some(&target_diff) = diffs_by_post_diff_path.get(&ictc_block.key.path) else {
                     continue;
                 };
@@ -253,7 +246,7 @@ fn run() -> Result<()> {
     //         do nothing
     //       else
     //         add diagnostic
-    for ictc_block in ictc_by_blockname_by_path
+    for ictc_block in file_node_by_path
         .values()
         .flat_map(|ictc_by_block_name| ictc_by_block_name.blocks.iter())
     {
@@ -267,7 +260,7 @@ fn run() -> Result<()> {
             }
 
             let mut block_range = None;
-            if let Some(ictc_blocks) = ictc_by_blockname_by_path.get(&then_change_key.path) {
+            if let Some(ictc_blocks) = file_node_by_path.get(&then_change_key.path) {
                 if let Some(ictc_block) = ictc_blocks.get_corresponding_block(&ictc_block) {
                     block_range = Some(ictc_block.content_range.clone());
                 }

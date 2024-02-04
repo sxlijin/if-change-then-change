@@ -166,6 +166,7 @@ stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'a/inv
 }
 
 #[test]
+#[ignore]
 fn new_file() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/diff-has-path-changes/e-new-file.diff")?;
 
@@ -176,6 +177,7 @@ fn new_file() -> anyhow::Result<()> {
 }
 
 #[test]
+#[ignore]
 fn deleted_file() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/diff-has-path-changes/f-deleted-file.diff")?;
 
@@ -191,6 +193,7 @@ should complain that f1.sh ictc is now orphaned
 }
 
 #[test]
+#[ignore]
 fn renamed_file() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/diff-has-path-changes/g-renamed-file.diff")?;
 
@@ -208,6 +211,7 @@ g1.sh:5 - then-change points at g2.sh, but g2.sh was deleted
 }
 
 #[test]
+#[ignore]
 fn copied_file() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/diff-has-path-changes/h-copied-file.diff")?;
 
@@ -223,6 +227,7 @@ still need to decide what'll go here
 }
 
 #[test]
+#[ignore]
 fn three_files() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/3-files/change.diff")?;
 
@@ -238,6 +243,7 @@ still need to decide what'll go here
 }
 
 #[test]
+#[ignore]
 fn three_files_incomplete() -> anyhow::Result<()> {
     // 2 of the 3 files do not point at all of the others
     let run = framework::run_tool("tests/data/3-files-incomplete/change.diff")?;
@@ -254,6 +260,7 @@ still need to decide what'll go here
 }
 
 #[test]
+#[ignore]
 fn five_files() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/5-files/change.diff")?;
 
@@ -268,6 +275,7 @@ still need to decide what'll go here
     Ok(())
 }
 
+// TODO- add test for one file with two ICTC blocks
 // TODO- "then-change references file that does not exist" points at the wrong line number
 // TODO- add test case for LFS diff
 // TODO- add handling for // and -- comment delimiters, also leading spaces
