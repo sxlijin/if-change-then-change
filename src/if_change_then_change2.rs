@@ -120,6 +120,82 @@ impl<'a> Parser<'a> {
     ///             line 10 (even though from an impl's perspective, it would be easy to simply
     ///             complain that "we reached EOF on line 10, but never terminated the
     ///             then-change" instead of tracking the line number of the then-change)
+    ///
+    /// Based on these principles, parsing is implemented as follows:
+    ///
+    ///     - the parser is a line-by-line state machine
+    ///     - lines are both a (1) state transition and (2) token for the parser
+    ///     - to maximize error readability, lines are classified into types _independently_ of
+    ///         the current state of the state machine, and the line_type is then handled
+    ///         according to the state machine
+    ///
+    /// Keep reading on for an explanation of the cases we don't handle, and why.
+    ///
+    /// 1. we can't eagerly recognize when a then-change has not been correctly closed:
+    ///
+    ///     ```c
+    ///     // if-change
+    ///     some code here
+    ///     // then-change
+    ///     //   then-change.foo
+    ///     more code here
+    ///     ```
+    ///
+    ///     In theory, while parsing a then-change block, we can detect when a line is not a
+    ///     comment, then terminate the block there and complain to the user that the then-change
+    ///     is not terminated.
+    ///
+    ///     However, we also allow using block comments for then-change blocks:
+    ///
+    ///     ```html
+    ///     <!-- if-change -->
+    ///     some code here
+    ///     <!-- then-change -->
+    ///     <!--   then-change1.foo -->
+    ///     <!-- end-change -->
+    ///
+    ///     <!-- if-change -->
+    ///     some code here
+    ///     <!-- then-change
+    ///             then-change2.foo
+    ///          end-change -->
+    ///
+    ///     <!-- if-change -->
+    ///     some code here
+    ///     <!--
+    ///         then-change
+    ///             then-change3.foo
+    ///         end-change
+    ///     -->
+    ///     ```
+    ///
+    ///     and because we use somewhat crude logic for identifying comments (1- we do our parsing
+    ///     line-by-line, not token-by-token, and 2- we use is_ascii_punctuation and
+    ///     is_ascii_whitespace to do a best-effort guess as to whether or not a token is a comment)
+    ///     we can't actually recognize when the next entry in a then-change block is actually
+    ///     another then-change path or just a line of code.
+    ///
+    /// 2. trailing punctuation in a filename is not supported
+    ///
+    ///     This is parsed as "then-change foo.bar", not "then-change foo.bar*":
+    ///
+    ///     ```c
+    ///     /* if-change*/
+    ///     some code here
+    ///     /* then-change foo.bar**/
+    ///     ```
+    ///
+    ///     Similarly, this is parsed as "then-change foo.bar", not "then-change foo.bar---":
+    ///
+    ///     ```html
+    ///     <!-- if-change -->
+    ///     more code here
+    ///     <!--then-change foo.bar----->
+    ///     ```
+    ///
+    ///     We do this to support maximally permissive block comment formats without having to
+    ///     hardcode support for individual comment formats.
+    ///     
     fn parse(mut self) -> Result<Vec<BlockNode>, Vec<Diagnostic>> {
         for (i, line) in self.input_content.lines().enumerate() {
             let line_type = Self::line_type(line);
@@ -721,7 +797,9 @@ mod test {
  // if-change
  sit
  // then-change
- //   then-change2.foo
+ //   then-change2a.foo
+ //   then-change2b.foo
+ //   then-change2c.foo
  // end-change
  amet
 
@@ -741,7 +819,7 @@ mod test {
  <!-- end-change -->
 
  <!-- if-change -->
- eiusmod
+ no whitespace required after then-change or the then-change-path
  <!-- then-change-->
  <!--   then-change5.foo-->
  <!-- end-change-->
@@ -751,7 +829,8 @@ mod test {
  incididunt
  <!--
         then-change
-    then-change6.foo
+    then-change6a.foo
+            then-change6b.foo
         end-change
  -->
 
@@ -764,7 +843,63 @@ mod test {
         end-change -->
  ",
         )?;
-        assert_that!(parsed.blocks).has_length(999);
+        assert_that!(parsed.blocks).has_length(7);
+        assert_that!(parsed.blocks[0]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(4, BlockKey::new("then-change1.foo"))],
+            if_change_lineno: 0,
+            then_change_lineno: 3,
+            end_change_lineno: 5,
+        });
+        assert_that!(parsed.blocks[1]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![
+                (11, BlockKey::new("then-change2a.foo")),
+                (12, BlockKey::new("then-change2b.foo")),
+                (13, BlockKey::new("then-change2c.foo")),
+            ],
+            if_change_lineno: 8,
+            then_change_lineno: 10,
+            end_change_lineno: 14,
+        });
+        assert_that!(parsed.blocks[2]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(22, BlockKey::new("then-change3.foo"))],
+            if_change_lineno: 17,
+            then_change_lineno: 21,
+            end_change_lineno: 23,
+        });
+        assert_that!(parsed.blocks[3]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(29, BlockKey::new("then-change4.foo"))],
+            if_change_lineno: 26,
+            then_change_lineno: 28,
+            end_change_lineno: 30,
+        });
+        assert_that!(parsed.blocks[4]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(35, BlockKey::new("then-change5.foo"))],
+            if_change_lineno: 32,
+            then_change_lineno: 34,
+            end_change_lineno: 36,
+        });
+        assert_that!(parsed.blocks[5]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![
+                (43, BlockKey::new("then-change6a.foo")),
+                (44, BlockKey::new("then-change6b.foo")),
+            ],
+            if_change_lineno: 38,
+            then_change_lineno: 42,
+            end_change_lineno: 45,
+        });
+        assert_that!(parsed.blocks[6]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(53, BlockKey::new("then-change7.foo"))],
+            if_change_lineno: 48,
+            then_change_lineno: 52,
+            end_change_lineno: 54,
+        });
 
         Ok(())
     }
