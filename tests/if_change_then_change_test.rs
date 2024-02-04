@@ -97,8 +97,8 @@ fn one_changed_in_if_change_other_missing_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/one-file-missing-if-change/d.sh - expected if-change-then-change in this file due to if-change in tests/data/one-file-missing-if-change/c.sh
 tests/data/one-file-missing-if-change/d.sh - expected change here due to change in tests/data/one-file-missing-if-change/c.sh:3-4
+tests/data/one-file-missing-if-change/d.sh - expected if-change-then-change in this file due to if-change in tests/data/one-file-missing-if-change/c.sh
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -107,13 +107,14 @@ tests/data/one-file-missing-if-change/d.sh - expected change here due to change 
 }
 
 #[test]
-fn two_ictc_blocks_changed_in_1_file() -> anyhow::Result<()> {
+fn file_with_2_blocks___both_blocks_changed() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/file-with-2-blocks/a.diff")?;
 
     assert_eq!(
         run.stdout,
         "\
-TBD what should go here
+tests/data/file-with-2-blocks/b1.sh:3 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:3-4
+tests/data/file-with-2-blocks/b2.sh:3 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:8-9
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -122,13 +123,46 @@ TBD what should go here
 }
 
 #[test]
-fn two_ictc_blocks_missing_changes_in_1_file() -> anyhow::Result<()> {
+fn file_with_2_blocks___both_blocks_missing_changes() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/file-with-2-blocks/b.diff")?;
 
     assert_eq!(
         run.stdout,
         "\
-TBD what should go here
+tests/data/file-with-2-blocks/a.sh:3-4 - expected change here due to change in tests/data/file-with-2-blocks/b1.sh:3
+tests/data/file-with-2-blocks/a.sh:8-9 - expected change here due to change in tests/data/file-with-2-blocks/b2.sh:3
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn file_with_2_blocks___1st_block_changed_2nd_block_missing_change() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/file-with-2-blocks/a-and-b2.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+tests/data/file-with-2-blocks/a.sh:8-9 - expected change here due to change in tests/data/file-with-2-blocks/b2.sh:3
+tests/data/file-with-2-blocks/b1.sh:3 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:3-4
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn file_with_2_blocks___1st_block_missing_change_2nd_block_changed() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/file-with-2-blocks/a-and-b1.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+tests/data/file-with-2-blocks/a.sh:3-4 - expected change here due to change in tests/data/file-with-2-blocks/b1.sh:3
+tests/data/file-with-2-blocks/b2.sh:3 - expected change here due to change in tests/data/file-with-2-blocks/a.sh:8-9
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -186,8 +220,8 @@ fn invalid_before_after_paths() -> anyhow::Result<()> {
     assert_eq!(
             run.stdout,
             "\
-stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'invalid-before0.txt' -> 'b/invalid-after0.txt'
 stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'a/invalid-before1.txt' -> 'invalid-after1.txt'
+stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'invalid-before0.txt' -> 'b/invalid-after0.txt'
 "
         );
     assert_eq!(run.exit_code, 0);
@@ -311,3 +345,4 @@ still need to decide what'll go here
 // TODO- add handling for // and -- comment delimiters, also leading spaces
 // TODO- validate that diffs match the current state of the file
 // TODO- add tests for malformed ictc blocks
+// TODO- implement ordering for diagnostics

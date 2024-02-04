@@ -207,16 +207,19 @@ fn run() -> Result<()> {
     //     check if the intersection in the ictc-block contains added/removed lines in the hunk
     //     (hunks have both added/removed lines and also context lines)
     //     if so, mark the block as "modified"
-    let modified_blocks_by_key = {
-        let mut modified_blocks_by_key = HashSet::new();
+    let modified_blocks_by_path = {
+        let mut modified_blocks_by_path = HashMap::new();
 
-        for file_node in file_node_by_path.values() {
+        for (path, file_node) in file_node_by_path.iter() {
+            let Some(&diff) = diffs_by_post_diff_path.get(path) else {
+                continue;
+            };
+
+            let mut modified_blocks = Vec::new();
+
             for ictc_block in file_node.blocks.iter() {
-                let Some(&target_diff) = diffs_by_post_diff_path.get(&ictc_block.key.path) else {
-                    continue;
-                };
-
-                for hunk in target_diff.hunks() {
+                let mut intersects_any_hunk = false;
+                for hunk in diff.hunks() {
                     // TODO- we can skip hunks with no intersection
                     let mut in_ictc_block = false;
                     for line in hunk.lines() {
@@ -226,14 +229,24 @@ fn run() -> Result<()> {
                             in_ictc_block = ictc_block.content_range.contains(&(lineno - 1));
                         }
                         if in_ictc_block && (line.is_added() || line.is_removed()) {
-                            modified_blocks_by_key.insert(ictc_block.key.clone());
+                            intersects_any_hunk = true;
                         }
                     }
                 }
+                if intersects_any_hunk {
+                    modified_blocks.push(ictc_block.clone());
+                }
+            }
+
+            if !modified_blocks.is_empty() {
+                modified_blocks_by_path.insert(
+                    path.clone(),
+                    if_change_then_change::FileNode::new(modified_blocks),
+                );
             }
         }
 
-        modified_blocks_by_key
+        modified_blocks_by_path
     };
 
     // Now that we know which if-change-then-change blocks have and have not been modified in the
@@ -246,17 +259,19 @@ fn run() -> Result<()> {
     //         do nothing
     //       else
     //         add diagnostic
-    for ictc_block in file_node_by_path
+    for ictc_block in modified_blocks_by_path
         .values()
-        .flat_map(|ictc_by_block_name| ictc_by_block_name.blocks.iter())
+        .flat_map(|file_node| file_node.blocks.iter())
     {
-        if !modified_blocks_by_key.contains(&ictc_block.key) {
-            continue;
-        }
-
         for then_change_key in ictc_block.then_change.iter() {
-            if modified_blocks_by_key.contains(then_change_key) {
-                continue;
+            if let Some(then_change_file_node) = modified_blocks_by_path.get(&then_change_key.path)
+            {
+                if then_change_file_node
+                    .get_corresponding_block(ictc_block)
+                    .is_some()
+                {
+                    continue;
+                }
             }
 
             let mut block_range = None;
@@ -292,6 +307,9 @@ fn run() -> Result<()> {
             }
         }
     }
+
+    // TODO- implement a better ordering scheme
+    diagnostics.sort_by_key(|d| format!("{}", d));
 
     for diagnostic in diagnostics {
         println!("{}", diagnostic);

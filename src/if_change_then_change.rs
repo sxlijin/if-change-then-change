@@ -1,6 +1,3 @@
-use anyhow::anyhow;
-use std::collections::{HashMap, HashSet};
-use std::fmt;
 use std::ops::Range;
 
 // Represents all if-change-then-change nodes found within a single file.
@@ -10,9 +7,7 @@ pub struct FileNode {
 
 impl FileNode {
     pub fn new(blocks: Vec<BlockNode>) -> FileNode {
-        let mut ret = FileNode { blocks: blocks };
-
-        ret
+        FileNode { blocks: blocks }
     }
 
     pub fn get_corresponding_block(&self, src_block: &BlockNode) -> Option<&BlockNode> {

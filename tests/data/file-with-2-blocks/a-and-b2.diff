@@ -1,0 +1,24 @@
+diff --git a/tests/data/file-with-2-blocks/a.sh b/tests/data/file-with-2-blocks/a.sh
+index 2fcf15a..c5e947c 100644
+--- a/tests/data/file-with-2-blocks/a.sh
++++ b/tests/data/file-with-2-blocks/a.sh
+@@ -1,7 +1,7 @@
+ export LOG="thumbnail=debug;metadata=info;"
+ # if-change
+ export METADATA1_BUCKET="s3://image-metadata1/"
+-export METADATA2_BUCKET="s3://image-typo/"
++export METADATA2_BUCKET="s3://image-metadata2/"
+ # then-change tests/data/file-with-2-blocks/b1.sh
+ export OS="ubuntu-18.04"
+ # if-change
+diff --git a/tests/data/file-with-2-blocks/b2.sh b/tests/data/file-with-2-blocks/b2.sh
+index 71987ba..c599f24 100644
+--- a/tests/data/file-with-2-blocks/b2.sh
++++ b/tests/data/file-with-2-blocks/b2.sh
+@@ -1,5 +1,5 @@
+ echo "rendering image thumbnails"
+ # if-change
+-echo "writing thumbnails to s3://typo/"
++echo "writing thumbnails to s3://image-thumbnails/"
+ # then-change tests/data/file-with-2-blocks/a.sh
+ echo "finished rendering thumbnails"

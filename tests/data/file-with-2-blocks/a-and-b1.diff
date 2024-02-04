@@ -1,0 +1,23 @@
+diff --git a/tests/data/file-with-2-blocks/a.sh b/tests/data/file-with-2-blocks/a.sh
+index 2fcf15a..8b89ebb 100644
+--- a/tests/data/file-with-2-blocks/a.sh
++++ b/tests/data/file-with-2-blocks/a.sh
+@@ -6,6 +6,6 @@ export METADATA2_BUCKET="s3://image-metadata2/"
+ export OS="ubuntu-18.04"
+ # if-change
+ export THUMBNAIL1_BUCKET="s3://image-thumbnails1/"
+-export THUMBNAIL2_BUCKET="s3://image-typo/"
++export THUMBNAIL2_BUCKET="s3://image-thumbnails2/"
+ # then-change tests/data/file-with-2-blocks/b2.sh
+ export SERVICE_CONFIG="image-service/config.json"
+diff --git a/tests/data/file-with-2-blocks/b1.sh b/tests/data/file-with-2-blocks/b1.sh
+index 191d014..cf34408 100644
+--- a/tests/data/file-with-2-blocks/b1.sh
++++ b/tests/data/file-with-2-blocks/b1.sh
+@@ -1,5 +1,5 @@
+ echo "starting image indexer"
+ # if-change
+-echo "reading metadata from s3://typo/"
++echo "reading metadata from s3://image-metadata/"
+ # then-change tests/data/file-with-2-blocks/a.sh
+ echo "finished indexing images"
