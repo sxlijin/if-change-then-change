@@ -107,6 +107,36 @@ tests/data/one-file-missing-if-change/d.sh - expected change here due to change 
 }
 
 #[test]
+fn two_ictc_blocks_changed_in_1_file() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/file-with-2-blocks/a.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+TBD what should go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn two_ictc_blocks_missing_changes_in_1_file() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/file-with-2-blocks/b.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+TBD what should go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
 fn post_diff_path_is_dev_null() -> anyhow::Result<()> {
     // this is the "file was deleted" case
     let run = framework::run_tool("tests/data/path-validation/post-diff-path-is-dev-null.diff")?;

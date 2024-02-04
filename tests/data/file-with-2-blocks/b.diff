@@ -1,0 +1,22 @@
+diff --git a/tests/data/file-with-2-blocks/b1.sh b/tests/data/file-with-2-blocks/b1.sh
+index 191d014..cf34408 100644
+--- a/tests/data/file-with-2-blocks/b1.sh
++++ b/tests/data/file-with-2-blocks/b1.sh
+@@ -1,5 +1,5 @@
+ echo "starting image indexer"
+ # if-change
+-echo "reading metadata from s3://typo/"
++echo "reading metadata from s3://image-metadata/"
+ # then-change tests/data/file-with-2-blocks/a.sh
+ echo "finished indexing images"
+diff --git a/tests/data/file-with-2-blocks/b2.sh b/tests/data/file-with-2-blocks/b2.sh
+index 71987ba..c599f24 100644
+--- a/tests/data/file-with-2-blocks/b2.sh
++++ b/tests/data/file-with-2-blocks/b2.sh
+@@ -1,5 +1,5 @@
+ echo "rendering image thumbnails"
+ # if-change
+-echo "writing thumbnails to s3://typo/"
++echo "writing thumbnails to s3://image-thumbnails/"
+ # then-change tests/data/file-with-2-blocks/a.sh
+ echo "finished rendering thumbnails"
