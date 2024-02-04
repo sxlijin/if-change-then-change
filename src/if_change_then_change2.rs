@@ -102,6 +102,24 @@ impl<'a> Parser<'a> {
         };
     }
 
+    /// Parsing follows these principles:
+    ///
+    ///     - if the syntax looks plausible to a human, then the parser must either consider it
+    ///         to be well-formed or produce an error
+    ///     - errors must be comprehensible and actionable
+    ///     - we want to handle as many languages as possible, without having to explicitly add
+    ///         support for them
+    ///
+    /// This has a number of implications:
+    ///
+    ///     - parsing must be highly flexible, so that the parser can recognize anything that
+    ///         is plausible syntax
+    ///     - line numbers should point to lines that make the user's syntax error obvious
+    ///         - e.g. if there is an unterminated then-change on line 5 of a 10-line file, the
+    ///             diagnostic we return to the user should point to line 5, rather than point to
+    ///             line 10 (even though from an impl's perspective, it would be easy to simply
+    ///             complain that "we reached EOF on line 10, but never terminated the
+    ///             then-change" instead of tracking the line number of the then-change)
     fn parse(mut self) -> Result<Vec<BlockNode>, Vec<Diagnostic>> {
         for (i, line) in self.input_content.lines().enumerate() {
             let line_type = Self::line_type(line);
