@@ -6,8 +6,10 @@ use derive_builder::Builder;
 
 enum ParseState {
     NoOp,
-    IfChange(BlockNodeBuilder),
-    ThenChange(BlockNodeBuilder),
+    // if-change records the line number where we switched to if-change parsing
+    IfChange(usize, BlockNodeBuilder),
+    // then-change records the line number where we switched to then-change parsing
+    ThenChange(usize, BlockNodeBuilder),
 }
 
 enum LineType<'a> {
@@ -47,20 +49,57 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn is_comment_prefix(s: &str) -> bool {
+        s.chars()
+            .all(|ch| ch.is_ascii_punctuation() || ch.is_ascii_whitespace())
+    }
+
     fn line_type(line: &'a str) -> LineType<'a> {
-        if line == "# if-change" {
-            LineType::IfChange
-        } else if line == "# then-change" {
-            LineType::ThenChangeBlockStart
-        } else if line.starts_with("# then-change") {
-            LineType::ThenChangeInline(&line["# then-change ".len()..])
-        } else if line == "# end-change" {
-            LineType::EndChangeAkaThenChangeBlockEnd
-        } else if line.starts_with("#") {
+        if let Some((pre, post)) = line.split_once("if-change") {
+            if Parser::is_comment_prefix(pre)
+                && post
+                    .trim_end_matches(|ch: char| {
+                        ch.is_ascii_punctuation() || ch.is_ascii_whitespace()
+                    })
+                    .chars()
+                    .nth(0)
+                    .map_or(true, |ch| ch.is_ascii_whitespace())
+            {
+                return LineType::IfChange;
+            }
+        }
+
+        if let Some((pre, post)) = line.split_once("then-change") {
+            if Parser::is_comment_prefix(pre) {
+                let post = post.trim_end_matches(|ch: char| {
+                    ch.is_ascii_punctuation() || ch.is_ascii_whitespace()
+                });
+                if post.is_empty() {
+                    return LineType::ThenChangeBlockStart;
+                }
+                if post
+                    .chars()
+                    .nth(0)
+                    .map_or(true, |ch| ch.is_ascii_whitespace())
+                {
+                    return LineType::ThenChangeInline(post.trim_start());
+                }
+            }
+        }
+
+        if let Some((pre, post)) = line.split_once("end-change") {
+            if Parser::is_comment_prefix(pre) {
+                return LineType::EndChangeAkaThenChangeBlockEnd;
+            }
+        }
+
+        return LineType::Comment;
+
+        return if line.starts_with("#") {
             LineType::Comment
         } else {
             LineType::NotComment
-        }
+        };
     }
 
     fn parse(mut self) -> Result<Vec<BlockNode>, Vec<Diagnostic>> {
@@ -71,37 +110,30 @@ impl<'a> Parser<'a> {
                     LineType::NotComment | LineType::Comment => {}
                     LineType::IfChange => {
                         let mut builder = BlockNodeBuilder::default();
-                        builder.key(BlockKey {
-                            path: self.input_path.to_string(),
-                        });
+                        builder.key(BlockKey::new(self.input_path));
                         builder.if_change_lineno(i);
 
-                        self.parse_state = ParseState::IfChange(builder);
+                        self.parse_state = ParseState::IfChange(i, builder);
                     }
                     LineType::ThenChangeInline(_) => {
-                        self.record_error(i, "");
+                        self.record_error(i, "then-change must follow an if-change");
                     }
                     LineType::ThenChangeBlockStart => {
-                        self.record_error(i, "");
+                        self.record_error(i, "then-change must follow an if-change");
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
-                        self.record_error(i, "");
+                        self.record_error(i, "end-change must follow an if-change and then-change");
                     }
                 },
-                ParseState::IfChange(ref mut builder) => match line_type {
+                ParseState::IfChange(_, ref mut builder) => match line_type {
                     LineType::NotComment | LineType::Comment => {
                         // do nothing
                     }
                     LineType::IfChange => {
-                        self.record_error(i, "");
+                        self.record_error(i, "if-change nesting is not allowed");
                     }
                     LineType::ThenChangeInline(then_change_path) => {
-                        builder.then_change_push((
-                            i,
-                            BlockKey {
-                                path: then_change_path.to_string(),
-                            },
-                        ));
+                        builder.then_change_push((i, BlockKey::new(then_change_path)));
                         builder.then_change_lineno(i);
                         builder.end_change_lineno(i);
 
@@ -117,33 +149,33 @@ impl<'a> Parser<'a> {
                     }
                     LineType::ThenChangeBlockStart => {
                         self.parse_state =
-                            ParseState::ThenChange(builder.then_change_lineno(i).clone());
+                            ParseState::ThenChange(i, builder.then_change_lineno(i).clone());
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
-                        self.record_error(i, "");
+                        self.record_error(i, "end-change must follow an if-change and then-change");
                     }
                 },
-                ParseState::ThenChange(ref mut builder) => match line_type {
+                ParseState::ThenChange(_, ref mut builder) => match line_type {
                     LineType::NotComment => {
-                        self.record_error(i, "");
+                        self.record_error(i, "end-change must follow an if-change and then-change");
                         self.parse_state = ParseState::NoOp;
                     }
                     LineType::Comment => {
                         builder.then_change_push((
                             i,
-                            BlockKey {
-                                path: line.to_string(),
-                            },
+                            BlockKey::new(line.trim_matches(|ch: char| {
+                                ch.is_ascii_punctuation() || ch.is_ascii_whitespace()
+                            })),
                         ));
                     }
                     LineType::IfChange => {
-                        self.record_error(i, "");
+                        self.record_error(i, "end-change must follow an if-change and then-change");
                     }
                     LineType::ThenChangeInline(_) => {
-                        self.record_error(i, "");
+                        self.record_error(i, "end-change must follow an if-change and then-change");
                     }
                     LineType::ThenChangeBlockStart => {
-                        self.record_error(i, "");
+                        self.record_error(i, "end-change must follow an if-change and then-change");
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
                         builder.end_change_lineno(i);
@@ -164,11 +196,11 @@ impl<'a> Parser<'a> {
 
         match self.parse_state {
             ParseState::NoOp => {}
-            _ => {
-                self.record_error(
-                    self.input_content.lines().count(),
-                    "if-change-then-change was not closed",
-                );
+            ParseState::IfChange(i, _) => {
+                self.record_error(i, "then-change must follow an if-change");
+            }
+            ParseState::ThenChange(i, _) => {
+                self.record_error(i, "end-change must follow an if-change and then-change");
             }
         }
 
@@ -330,6 +362,14 @@ pub struct BlockKey {
     pub path: String,
 }
 
+impl BlockKey {
+    fn new(path: &str) -> BlockKey {
+        BlockKey {
+            path: path.to_string(),
+        }
+    }
+}
+
 #[derive(Builder, Clone, Debug, PartialEq, Eq)]
 pub struct BlockNode {
     // BlockNode keys are NOT required to be unique per BlockNode.
@@ -387,63 +427,326 @@ mod test {
     use test_log::test;
 
     #[test]
-    fn then_change_one_file() -> anyhow::Result<()> {
+    fn then_change_well_formed() -> anyhow::Result<()> {
         let parsed = FileNode::from_str(
             "if-change.foo",
             "\
-lorem
+0 lorem
 # if-change
-ipsum
-dolor
-sit
+# if-change-should-not-be-considered
+3 ipsum dolor
+4 sit
 # then-change then-change.foo
-amet
-",
-        )?;
-        assert_that!(parsed.blocks).has_length(1);
+6 amet
 
-        Ok(())
-    }
-
-    #[test]
-    fn then_change_two_files() -> anyhow::Result<()> {
-        let parsed = FileNode::from_str(
-            "if-change.foo",
-            "\
-lorem
+8 consectetur
 # if-change
-ipsum
-dolor
-sit
+10 adipiscing
+11 elit
 # then-change
 #   then-change1.foo
 #   then-change2.foo
 # end-change
-amet",
-        )?;
-        assert_that!(parsed.blocks).has_length(1);
 
-        Ok(())
-    }
-
-    #[test]
-    fn then_change_two_files_and_self() -> anyhow::Result<()> {
-        let parsed = FileNode::from_str(
-            "if-change.foo",
-            "\
-lorem
 # if-change
-ipsum
-dolor
-sit
+18 sed
+19 do
+20 eiusmod
 # then-change
 #   if-change.foo
-#   then-change1.foo
-#   then-change2.foo
+#   then-change3.foo
+#   then-change4.foo
 # end-change
-amet",
+26 tempor
+27 incididunt
+",
         )?;
-        assert_that!(parsed.blocks).has_length(1);
+        assert_that!(parsed.blocks).has_length(3);
+        assert_that!(parsed.blocks[0]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(5, BlockKey::new("then-change.foo"))],
+            if_change_lineno: 1,
+            then_change_lineno: 5,
+            end_change_lineno: 5,
+        });
+        assert_that!(parsed.blocks[1]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![
+                (13, BlockKey::new("then-change1.foo")),
+                (14, BlockKey::new("then-change2.foo")),
+            ],
+            if_change_lineno: 9,
+            then_change_lineno: 12,
+            end_change_lineno: 15,
+        });
+        assert_that!(parsed.blocks[2]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![
+                // AST node should not strip self-referential paths;
+                // that happens in a higher-level context
+                (22, BlockKey::new("if-change.foo")),
+                (23, BlockKey::new("then-change3.foo")),
+                (24, BlockKey::new("then-change4.foo")),
+            ],
+            if_change_lineno: 17,
+            then_change_lineno: 21,
+            end_change_lineno: 25,
+        });
+
+        Ok(())
+    }
+
+    #[test]
+    fn handles_all_indentation_levels() -> anyhow::Result<()> {
+        let parsed = FileNode::from_str(
+            "if-change.foo",
+            "\
+ lorem
+ # if-change
+ ipsum
+ dolor
+ sit
+ # then-change then-change1.foo
+ amet
+
+     # if-change
+     consectetur
+     # then-change then-change2.foo
+     adipiscing
+
+     # if-change
+     elit
+     # then-change
+     #   then-change3.foo
+     # end-change
+
+     # if-change
+     sed
+     do
+     # then-change
+     # then-change4a.foo
+     #       then-change4b.foo
+     # end-change
+
+ // IDK if I like allowing mismatched indentation levels to match up
+ // with each other, but this is easier to implement than asserting
+ // that comment formats must match (plus, I don't see the value in
+ // adding handling for mismatches)
+         # if-change
+     eiusmod
+     tempor
+     incididunt
+     # then-change then-change5.foo
+ ut
+ labore
+ ",
+        )?;
+        assert_that!(parsed.blocks).has_length(5);
+        assert_that!(parsed.blocks[0]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(5, BlockKey::new("then-change1.foo"))],
+            if_change_lineno: 1,
+            then_change_lineno: 5,
+            end_change_lineno: 5,
+        });
+        assert_that!(parsed.blocks[1]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(10, BlockKey::new("then-change2.foo"))],
+            if_change_lineno: 8,
+            then_change_lineno: 10,
+            end_change_lineno: 10,
+        });
+        assert_that!(parsed.blocks[2]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(16, BlockKey::new("then-change3.foo"))],
+            if_change_lineno: 13,
+            then_change_lineno: 15,
+            end_change_lineno: 17,
+        });
+        assert_that!(parsed.blocks[3]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![
+                (23, BlockKey::new("then-change4a.foo")),
+                (24, BlockKey::new("then-change4b.foo")),
+            ],
+            if_change_lineno: 19,
+            then_change_lineno: 22,
+            end_change_lineno: 25,
+        });
+        assert_that!(parsed.blocks[4]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(35, BlockKey::new("then-change5.foo"))],
+            if_change_lineno: 31,
+            then_change_lineno: 35,
+            end_change_lineno: 35,
+        });
+
+        Ok(())
+    }
+
+    #[test]
+    fn handles_all_comment_formats_thenchange_inline() -> anyhow::Result<()> {
+        let parsed = FileNode::from_str(
+            "if-change.foo",
+            "\
+ lorem
+ # if-change
+ ipsum
+ dolor
+ sit
+ # then-change then-change1.foo
+ amet
+
+ // if-change
+ consectetur
+ adipiscing
+ elit
+ // then-change then-change2.foo
+
+ sed
+ -- if-change
+ do
+ -- then-change then-change3.foo
+ eiusmod
+
+ /* if-change */
+ tempor
+ incididunt
+ /* then-change then-change4.foo */
+
+ <!-- if-change -->
+ ut
+ <!-- then-change then-change5.foo -->
+ <!-- if-change-->
+ labore
+ et
+ <!-- then-change then-change6.foo-->
+
+ // IDK if I like allowing mismatched comment formats to line up
+ // with each other, but this is easier to implement than asserting
+ // that comment formats must match (plus, I don't see the value in
+ // adding handling for mismatches)
+ -- if-change
+ dolore
+ magna
+ aliqua
+ // then-change then-change7.foo
+ ",
+        )?;
+        assert_that!(parsed.blocks).has_length(7);
+        assert_that!(parsed.blocks[0]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(5, BlockKey::new("then-change1.foo"))],
+            if_change_lineno: 1,
+            then_change_lineno: 5,
+            end_change_lineno: 5,
+        });
+        assert_that!(parsed.blocks[1]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(12, BlockKey::new("then-change2.foo"))],
+            if_change_lineno: 8,
+            then_change_lineno: 12,
+            end_change_lineno: 12,
+        });
+        assert_that!(parsed.blocks[2]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(17, BlockKey::new("then-change3.foo"))],
+            if_change_lineno: 15,
+            then_change_lineno: 17,
+            end_change_lineno: 17,
+        });
+        assert_that!(parsed.blocks[3]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(23, BlockKey::new("then-change4.foo"))],
+            if_change_lineno: 20,
+            then_change_lineno: 23,
+            end_change_lineno: 23,
+        });
+        assert_that!(parsed.blocks[4]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(27, BlockKey::new("then-change5.foo"))],
+            if_change_lineno: 25,
+            then_change_lineno: 27,
+            end_change_lineno: 27,
+        });
+        assert_that!(parsed.blocks[5]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(31, BlockKey::new("then-change6.foo"))],
+            if_change_lineno: 28,
+            then_change_lineno: 31,
+            end_change_lineno: 31,
+        });
+        assert_that!(parsed.blocks[6]).is_equal_to(BlockNode {
+            key: BlockKey::new("if-change.foo"),
+            then_change: vec![(41, BlockKey::new("then-change7.foo"))],
+            if_change_lineno: 37,
+            then_change_lineno: 41,
+            end_change_lineno: 41,
+        });
+
+        Ok(())
+    }
+
+    #[test]
+    fn handles_all_comment_formats_thenchange_block() -> anyhow::Result<()> {
+        let parsed = FileNode::from_str(
+            "if-change.foo",
+            "\
+ # if-change
+ lorem
+ ipsum
+ # then-change
+ #   then-change1.foo
+ # end-change
+
+ dolor
+ // if-change
+ sit
+ // then-change
+ //   then-change2.foo
+ // end-change
+ amet
+
+/* if-change */
+ consectetur
+ adipiscing
+ elit
+ /* then-change */
+ /*   then-change3.foo */
+ /* end-change */
+
+ sed
+ <!-- if-change -->
+ do
+ <!-- then-change -->
+ <!--   then-change4.foo -->
+ <!-- end-change -->
+
+ <!-- if-change -->
+ eiusmod
+ <!-- then-change-->
+ <!--   then-change5.foo-->
+ <!-- end-change-->
+
+ <!-- if-change -->
+ tempor
+ incididunt
+ <!--
+        then-change
+    then-change6.foo
+        end-change
+ -->
+
+ <!-- if-change -->
+ ut
+ labore
+ et
+ <!-- then-change
+    then-change7.foo
+        end-change -->
+ ",
+        )?;
+        assert_that!(parsed.blocks).has_length(999);
 
         Ok(())
     }
@@ -461,10 +764,12 @@ sit
 # then-change
 #   then-change.foo
 amet
-then-change is not closed
+then-change-above is not closed
 ",
         );
         assert_that!(parsed).is_err();
+        assert_that!(parsed.unwrap_err().to_string().as_str())
+            .is_equal_to("if-change.foo:6 - end-change must follow an if-change and then-change\n");
 
         Ok(())
     }
@@ -483,10 +788,12 @@ dolor
 sit
 # then-change then-change.foo
 amet
-then-change is not closed
+then-change-above is not closed
 ",
         );
         assert_that!(parsed).is_err();
+        assert_that!(parsed.unwrap_err().to_string().as_str())
+            .is_equal_to("if-change.foo:4 - if-change nesting is not allowed\n");
 
         Ok(())
     }
