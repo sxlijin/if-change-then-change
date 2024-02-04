@@ -1,0 +1,98 @@
+lorem
+# if-change
+ipsum
+dolor
+sit
+# then-change then-change-inline1.foo
+amet
+
+// if-change
+consectetur
+adipiscing
+elit
+// then-change then-change-inline2.foo
+
+sed
+-- if-change
+do
+-- then-change then-change-inline3.foo
+eiusmod
+
+/* if-change */
+tempor
+incididunt
+/* then-change then-change-inline4.foo */
+
+<!-- if-change -->
+ut
+<!-- then-change then-change-inline5.foo -->
+<!-- if-change-->
+labore
+et
+<!-- then-change then-change-inline6.foo-->
+
+// IDK if I like allowing mismatched comment formats to line up
+// with each other, but this is easier to implement than asserting
+// that comment formats must match (plus, I don't see the value in
+// adding handling for mismatches)
+-- if-change
+dolore
+magna
+aliqua
+// then-change then-change-inline7.foo
+
+# if-change
+lorem
+ipsum
+# then-change
+#   then-change-block1.foo
+# end-change
+
+dolor
+// if-change
+sit
+// then-change
+//   then-change-block2a.foo
+//   then-change-block2b.foo
+//   then-change-block2c.foo
+// end-change
+amet
+
+* if-change */
+consectetur
+adipiscing
+elit
+/* then-change */
+/*   then-change-block3.foo */
+/* end-change */
+
+sed
+<!-- if-change -->
+do
+<!-- then-change -->
+<!--   then-change-block4.foo -->
+<!-- end-change -->
+
+<!-- if-change -->
+no whitespace required after then-change or the then-change-path
+<!-- then-change-->
+<!--   then-change-block5.foo-->
+<!-- end-change-->
+
+<!-- if-change -->
+tempor
+incididunt
+<!--
+       then-change
+   then-change-block6a.foo
+           then-change-block6b.foo
+       end-change
+-->
+
+<!-- if-change -->
+ut
+labore
+et
+<!-- then-change
+   then-change-block7.foo
+       end-change -->

@@ -3,7 +3,34 @@ use test_log::test;
 
 mod framework;
 
-mod two_files {}
+#[test]
+fn formatting() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/formatting/if-change.diff")?;
+
+    assert_eq!(run.stdout, "\
+tests/data/formatting/if-change.foo:6 - then-change references file that does not exist: 'then-change-inline1.foo'
+tests/data/formatting/if-change.foo:13 - then-change references file that does not exist: 'then-change-inline2.foo'
+tests/data/formatting/if-change.foo:18 - then-change references file that does not exist: 'then-change-inline3.foo'
+tests/data/formatting/if-change.foo:24 - then-change references file that does not exist: 'then-change-inline4.foo'
+tests/data/formatting/if-change.foo:28 - then-change references file that does not exist: 'then-change-inline5.foo'
+tests/data/formatting/if-change.foo:32 - then-change references file that does not exist: 'then-change-inline6.foo'
+tests/data/formatting/if-change.foo:42 - then-change references file that does not exist: 'then-change-inline7.foo'
+tests/data/formatting/if-change.foo:48 - then-change references file that does not exist: 'then-change-block1.foo'
+tests/data/formatting/if-change.foo:55 - then-change references file that does not exist: 'then-change-block2a.foo'
+tests/data/formatting/if-change.foo:56 - then-change references file that does not exist: 'then-change-block2b.foo'
+tests/data/formatting/if-change.foo:57 - then-change references file that does not exist: 'then-change-block2c.foo'
+tests/data/formatting/if-change.foo:66 - then-change references file that does not exist: 'then-change-block3.foo'
+tests/data/formatting/if-change.foo:73 - then-change references file that does not exist: 'then-change-block4.foo'
+tests/data/formatting/if-change.foo:79 - then-change references file that does not exist: 'then-change-block5.foo'
+tests/data/formatting/if-change.foo:87 - then-change references file that does not exist: 'then-change-block6a.foo'
+tests/data/formatting/if-change.foo:88 - then-change references file that does not exist: 'then-change-block6b.foo'
+tests/data/formatting/if-change.foo:97 - then-change references file that does not exist: 'then-change-block7.foo'
+");
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
 #[test]
 fn both_changed_both_added_lines_in_if_change() -> anyhow::Result<()> {
     // both a.sh and b.sh changed
@@ -230,7 +257,6 @@ stdin - invalid git diff: expected a/before.path -> b/after.path, but got 'inval
 }
 
 #[test]
-#[ignore]
 fn new_file() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/diff-has-path-changes/e-new-file.diff")?;
 
@@ -358,7 +384,6 @@ tests/data/5-files/release-stress.sh:2-10 - expected change here due to change i
     Ok(())
 }
 
-// TODO- add test for one file with two ICTC blocks
 // TODO- add test case for LFS diff
 // TODO- add handling for // and -- comment delimiters, also leading spaces
 // TODO- validate that diffs match the current state of the file
