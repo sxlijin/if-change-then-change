@@ -191,7 +191,7 @@ fn run() -> Result<()> {
                                 &file_contents,
                             ) {
                                 Ok(file_node) => {
-                                    second_pass.insert(path.clone(), file_node);
+                                    second_pass.insert(then_change_key.path.clone(), file_node);
                                 }
                                 Err(_) => {
                                     // TODO- append diagnostics
