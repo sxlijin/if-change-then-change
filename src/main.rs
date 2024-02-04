@@ -251,8 +251,11 @@ fn run() -> Result<()> {
                     path: then_change_key.path.clone(),
                     lines: None,
                     message: format!(
-                        "expected if-change-then-change in this file due to if-change in {}",
-                        ictc_block.key.path
+                        "expected an if-change-then-change in this file that matches {}",
+                        DiagnosticPosition {
+                            path: &ictc_block.key.path,
+                            lines: Some(&ictc_block.content_range()),
+                        },
                     ),
                 });
             }

@@ -63,7 +63,7 @@ fn both_changed_one_missing_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/one-file-missing-if-change/d.sh - expected if-change-then-change in this file due to if-change in tests/data/one-file-missing-if-change/c.sh
+tests/data/one-file-missing-if-change/d.sh - expected an if-change-then-change in this file that matches tests/data/one-file-missing-if-change/c.sh:2-5
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -97,8 +97,8 @@ fn one_changed_in_if_change_other_missing_if_change() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
+tests/data/one-file-missing-if-change/d.sh - expected an if-change-then-change in this file that matches tests/data/one-file-missing-if-change/c.sh:2-5
 tests/data/one-file-missing-if-change/d.sh - expected change here due to change in tests/data/one-file-missing-if-change/c.sh:2-5
-tests/data/one-file-missing-if-change/d.sh - expected if-change-then-change in this file due to if-change in tests/data/one-file-missing-if-change/c.sh
 "
     );
     assert_eq!(run.exit_code, 0);
@@ -308,6 +308,22 @@ tests/data/3-files/push.sh:2-7 - expected change here due to change in tests/dat
 
 #[test]
 #[ignore]
+fn three_files_chain() -> anyhow::Result<()> {
+    // "chain" because push.sh <-> release.sh, push.sh -> build.sh, build.sh -> release.sh
+    let run = framework::run_tool("tests/data/3-files-chain/change.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+still need to decide what'll go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
 fn three_files_incomplete() -> anyhow::Result<()> {
     // "incomplete" because 2 of the 3 files do not point at all of the other files
     let run = framework::run_tool("tests/data/3-files-incomplete/change.diff")?;
@@ -315,7 +331,8 @@ fn three_files_incomplete() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-still need to decide what'll go here
+tests/data/3-files-incomplete/build.sh:2-6 - expected change here due to change in tests/data/3-files-incomplete/push.sh:2-7
+tests/data/3-files-incomplete/release.sh:2-6 - expected change here due to change in tests/data/3-files-incomplete/push.sh:2-7
 "
     );
     assert_eq!(run.exit_code, 0);
