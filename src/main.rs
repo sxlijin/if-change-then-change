@@ -1,61 +1,13 @@
+mod diagnostic;
+mod if_change_then_change;
+mod if_change_then_change2;
+
+use crate::diagnostic::{Diagnostic, DiagnosticPosition};
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::io::Read;
 use std::ops::Range;
-
-mod if_change_then_change;
-mod if_change_then_change2;
-
-struct DiagnosticPosition<'a> {
-    path: &'a String,
-    // 0-indexed, inclusive-exclusive
-    lines: Option<&'a Range<usize>>,
-}
-
-impl<'a> fmt::Display for DiagnosticPosition<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(Range {
-            start: start_line,
-            end: end_line,
-        }) = self.lines
-        {
-            // We _could_ just always show "a.sh:4-4" when the line range only consists of one line, but
-            // "a.sh:4" is much more obvious at first glance; c.f. the GH permalink format.
-            if start_line + 1 == *end_line {
-                write!(f, "{}:{}", self.path, start_line + 1)
-            } else {
-                write!(f, "{}:{}-{}", self.path, start_line + 1, end_line)
-            }
-        } else {
-            write!(f, "{}", self.path)
-        }
-    }
-}
-
-// Diagnostics should always be tied to the location where we want the user to
-// make a change, i.e. if a.sh contains a "if change ... then change b.sh", a.sh
-// has been changed but b.sh has not, then the diagnostic should be tied to b.sh.
-struct Diagnostic {
-    path: String,
-    // 0-indexed, inclusive-exclusive
-    lines: Option<Range<usize>>,
-    message: String,
-}
-
-impl fmt::Display for Diagnostic {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} - {}",
-            DiagnosticPosition {
-                path: &self.path,
-                lines: self.lines.as_ref()
-            },
-            self.message
-        )
-    }
-}
 
 fn run() -> Result<()> {
     let mut diagnostics = Vec::new();
