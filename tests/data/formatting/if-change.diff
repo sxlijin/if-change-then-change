@@ -1,0 +1,100 @@
+diff --git a/tests/data/formatting/if-change.foo b/tests/data/formatting/if-change.foo
+index 8429428..6a9a922 100644
+--- a/tests/data/formatting/if-change.foo
++++ b/tests/data/formatting/if-change.foo
+@@ -1,33 +1,33 @@
+ lorem
+ # if-change
+-ipsum-typo
++ipsum
+ dolor
+ sit
+ # then-change then-change-inline1.foo
+ amet
+ 
+ // if-change
+-consectetur-typo
++consectetur
+ adipiscing
+ elit
+ // then-change then-change-inline2.foo
+ 
+ sed
+ -- if-change
+-do-typo
++do
+ -- then-change then-change-inline3.foo
+ eiusmod
+ 
+ /* if-change */
+-tempor-typo
++tempor
+ incididunt
+ /* then-change then-change-inline4.foo */
+ 
+ <!-- if-change -->
+-ut-typo
++ut
+ <!-- then-change then-change-inline5.foo -->
+ <!-- if-change-->
+-labore-typo
++labore
+ et
+ <!-- then-change then-change-inline6.foo-->
+ 
+@@ -37,20 +37,20 @@ et
+ // adding handling for mismatches)
+ -- if-change
+ dolore
+-magna-typo
++magna
+ aliqua
+ // then-change then-change-inline7.foo
+ 
+ # if-change
+ lorem
+-ipsum-typo
++ipsum
+ # then-change
+ #   then-change-block1.foo
+ # end-change
+ 
+ dolor
+ // if-change
+-sit-typo
++sit
+ // then-change
+ //   then-change-block2a.foo
+ //   then-change-block2b.foo
+@@ -61,27 +61,27 @@ amet
+ * if-change */
+ consectetur
+ adipiscing
+-elit-typo
++elit
+ /* then-change */
+ /*   then-change-block3.foo */
+ /* end-change */
+ 
+ sed
+ <!-- if-change -->
+-do-typo
++do
+ <!-- then-change -->
+ <!--   then-change-block4.foo -->
+ <!-- end-change -->
+ 
+ <!-- if-change -->
+-no whitespace-typo required after then-change or the then-change-path
++no whitespace required after then-change or the then-change-path
+ <!-- then-change-->
+ <!--   then-change-block5.foo-->
+ <!-- end-change-->
+ 
+ <!-- if-change -->
+ tempor
+-incididunt-typo
++incididunt
+ <!--
+        then-change
+    then-change-block6a.foo
