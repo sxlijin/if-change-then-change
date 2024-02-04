@@ -3,6 +3,7 @@ mod if_change_then_change2;
 
 use crate::diagnostic::{Diagnostic, DiagnosticPosition};
 use anyhow::Result;
+use if_change_then_change2::FileNodeParseError;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::io::Read;
@@ -91,8 +92,10 @@ fn run() -> Result<()> {
                     // TODO- in what cases does the post-diff path not exist?
                     // TODO- if a file is deleted, the post-diff path is... /dev/null?
                     path: "stdin".to_string(),
-                    // TODO- $lines should reference the line where the thenchange comes from
+                    // TODO- $lines should reference the diff line pointing at $path
                     lines: None,
+                    // TODO- read_to_string can fail for other reasons (e.g.
+                    // $path is a dir, $path does not allow reads)
                     message: format!("diff references file that does not exist: '{}'", path),
                 });
                 continue;
@@ -101,8 +104,8 @@ fn run() -> Result<()> {
                 Ok(file_node) => {
                     first_pass.insert(path.clone(), file_node);
                 }
-                Err(_) => {
-                    // TODO- append diagnostics
+                Err(error) => {
+                    diagnostics.extend(error.diagnostics);
                 }
             }
         }
@@ -117,7 +120,7 @@ fn run() -> Result<()> {
                     block.then_change = block
                         .then_change
                         .into_iter()
-                        .filter(|(_, then_change_key)| {
+                        .filter(|(then_change_lineno, then_change_key)| {
                             if diffs_by_post_diff_path.contains_key(&then_change_key.path) {
                                 return true;
                             }
@@ -129,8 +132,7 @@ fn run() -> Result<()> {
                             else {
                                 diagnostics.push(Diagnostic {
                                     path: block.key.path.clone(),
-                                    // TODO- $lines should reference the line where the thenchange comes from
-                                    lines: Some(content_range.clone()),
+                                    lines: Some(*then_change_lineno..*then_change_lineno + 1),
                                     message: format!(
                                         "then-change references file that does not exist: '{}'",
                                         then_change_key.path
@@ -145,8 +147,8 @@ fn run() -> Result<()> {
                                 Ok(file_node) => {
                                     second_pass.insert(then_change_key.path.clone(), file_node);
                                 }
-                                Err(_) => {
-                                    // TODO- append diagnostics
+                                Err(error) => {
+                                    diagnostics.extend(error.diagnostics);
                                 }
                             };
                             true

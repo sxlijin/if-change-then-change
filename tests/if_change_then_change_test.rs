@@ -205,7 +205,7 @@ fn then_change_references_nonexistent_file() -> anyhow::Result<()> {
     assert_eq!(
             run.stdout,
             "\
-tests/data/path-validation/z.sh:3-7 - then-change references file that does not exist: 'nonexistent.cfg'
+tests/data/path-validation/z.sh:7 - then-change references file that does not exist: 'nonexistent.cfg'
 "
         );
     assert_eq!(run.exit_code, 0);
@@ -340,7 +340,6 @@ still need to decide what'll go here
 }
 
 // TODO- add test for one file with two ICTC blocks
-// TODO- "then-change references file that does not exist" points at the wrong line number
 // TODO- add test case for LFS diff
 // TODO- add handling for // and -- comment delimiters, also leading spaces
 // TODO- validate that diffs match the current state of the file
