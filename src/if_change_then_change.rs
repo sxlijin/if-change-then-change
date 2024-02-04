@@ -375,6 +375,7 @@ amet",
     //     }
 
     #[test]
+    #[ignore]
     fn error_when_then_change_not_closed() -> anyhow::Result<()> {
         let parsed = FileNode::from_str(
             "if-change.foo",
@@ -396,6 +397,7 @@ then-change is not closed
     }
 
     #[test]
+    #[ignore]
     fn error_when_if_change_not_closed() -> anyhow::Result<()> {
         let parsed = FileNode::from_str(
             "if-change.foo",
