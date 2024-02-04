@@ -4,7 +4,7 @@ export VERSION="0.3.1-alpha"
 # then-change
 #   tests/data/3-files/push.sh
 #   tests/data/3-files/release.sh
-# fi-change
+# end-change
 
 echo "set up build env step 1 of 3"
 echo "set up build env step 2 of 3"

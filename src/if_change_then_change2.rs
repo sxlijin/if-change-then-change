@@ -511,7 +511,7 @@ impl BlockNode {
 //   a/b/c.rs
 //   a/b/c2.rs
 //   a/b/c3.rs
-// fi-change
+// end-change
 
 #[cfg(test)]
 mod test {
