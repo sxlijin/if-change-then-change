@@ -1,5 +1,4 @@
 mod diagnostic;
-mod if_change_then_change;
 mod if_change_then_change2;
 
 use crate::diagnostic::{Diagnostic, DiagnosticPosition};
@@ -98,7 +97,7 @@ fn run() -> Result<()> {
                 });
                 continue;
             };
-            match if_change_then_change::FileNode::from_str(path, &file_contents) {
+            match if_change_then_change2::FileNode::from_str(path, &file_contents) {
                 Ok(file_node) => {
                     first_pass.insert(path.clone(), file_node);
                 }
@@ -114,10 +113,11 @@ fn run() -> Result<()> {
                 .blocks
                 .into_iter()
                 .map(|mut block| {
+                    let content_range = block.content_range();
                     block.then_change = block
                         .then_change
                         .into_iter()
-                        .filter(|then_change_key| {
+                        .filter(|(_, then_change_key)| {
                             if diffs_by_post_diff_path.contains_key(&then_change_key.path) {
                                 return true;
                             }
@@ -130,7 +130,7 @@ fn run() -> Result<()> {
                                 diagnostics.push(Diagnostic {
                                     path: block.key.path.clone(),
                                     // TODO- $lines should reference the line where the thenchange comes from
-                                    lines: Some(block.content_range.clone()),
+                                    lines: Some(content_range.clone()),
                                     message: format!(
                                         "then-change references file that does not exist: '{}'",
                                         then_change_key.path
@@ -138,7 +138,7 @@ fn run() -> Result<()> {
                                 });
                                 return false;
                             };
-                            match if_change_then_change::FileNode::from_str(
+                            match if_change_then_change2::FileNode::from_str(
                                 &then_change_key.path,
                                 &file_contents,
                             ) {
@@ -190,7 +190,7 @@ fn run() -> Result<()> {
                         // TODO- is this algo sound? are there ways that can break this approach w in_ictc_block?
                         if let Some(lineno) = line.target_line_no {
                             // target_line_no is 1-indexed
-                            in_ictc_block = ictc_block.content_range.contains(&(lineno - 1));
+                            in_ictc_block = ictc_block.content_range().contains(&(lineno - 1));
                         }
                         if in_ictc_block && (line.is_added() || line.is_removed()) {
                             intersects_any_hunk = true;
@@ -205,7 +205,7 @@ fn run() -> Result<()> {
             if !modified_blocks.is_empty() {
                 modified_blocks_by_path.insert(
                     path.clone(),
-                    if_change_then_change::FileNode::new(modified_blocks),
+                    if_change_then_change2::FileNode::new(modified_blocks),
                 );
             }
         }
@@ -227,7 +227,7 @@ fn run() -> Result<()> {
         .values()
         .flat_map(|file_node| file_node.blocks.iter())
     {
-        for then_change_key in ictc_block.then_change.iter() {
+        for (_, then_change_key) in ictc_block.then_change.iter() {
             if let Some(then_change_file_node) = modified_blocks_by_path.get(&then_change_key.path)
             {
                 if then_change_file_node
@@ -241,7 +241,7 @@ fn run() -> Result<()> {
             let mut block_range = None;
             if let Some(ictc_blocks) = file_nodes_by_path.get(&then_change_key.path) {
                 if let Some(ictc_block) = ictc_blocks.get_corresponding_block(&ictc_block) {
-                    block_range = Some(ictc_block.content_range.clone());
+                    block_range = Some(ictc_block.content_range());
                 }
             }
             if block_range.is_none() {
@@ -264,7 +264,7 @@ fn run() -> Result<()> {
                         "expected change here due to change in {}",
                         DiagnosticPosition {
                             path: &ictc_block.key.path,
-                            lines: Some(&ictc_block.content_range),
+                            lines: Some(&ictc_block.content_range()),
                         },
                     ),
                 });

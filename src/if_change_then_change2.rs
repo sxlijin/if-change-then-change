@@ -10,11 +10,11 @@ enum ParseState {
     ThenChange(BlockNodeBuilder),
 }
 
-enum LineType {
+enum LineType<'a> {
     NotComment,
     Comment,
     IfChange,
-    ThenChangeInline,
+    ThenChangeInline(&'a str),
     ThenChangeBlockStart,
     EndChangeAkaThenChangeBlockEnd,
 }
@@ -47,32 +47,38 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn line_type(line: &'a str) -> LineType<'a> {
+        if line == "# if-change" {
+            LineType::IfChange
+        } else if line == "# then-change" {
+            LineType::ThenChangeBlockStart
+        } else if line.starts_with("# then-change") {
+            LineType::ThenChangeInline(&line["# then-change ".len()..])
+        } else if line == "# end-change" {
+            LineType::EndChangeAkaThenChangeBlockEnd
+        } else if line.starts_with("#") {
+            LineType::Comment
+        } else {
+            LineType::NotComment
+        }
+    }
+
     fn parse(mut self) -> Result<Vec<BlockNode>, Vec<Diagnostic>> {
         for (i, line) in self.input_content.lines().enumerate() {
-            let line_type = if line == "# if-change" {
-                LineType::IfChange
-            } else if line == "# then-change" {
-                LineType::ThenChangeBlockStart
-            } else if line.starts_with("# then-change") {
-                LineType::ThenChangeInline
-            } else if line == "# end-change" {
-                LineType::EndChangeAkaThenChangeBlockEnd
-            } else if line.starts_with("#") {
-                LineType::Comment
-            } else {
-                LineType::NotComment
-            };
-
+            let line_type = Self::line_type(line);
             match self.parse_state {
                 ParseState::NoOp => match line_type {
                     LineType::NotComment | LineType::Comment => {}
                     LineType::IfChange => {
                         let mut builder = BlockNodeBuilder::default();
+                        builder.key(BlockKey {
+                            path: self.input_path.to_string(),
+                        });
                         builder.if_change_lineno(i);
 
                         self.parse_state = ParseState::IfChange(builder);
                     }
-                    LineType::ThenChangeInline => {
+                    LineType::ThenChangeInline(_) => {
                         self.record_error(i, "");
                     }
                     LineType::ThenChangeBlockStart => {
@@ -89,8 +95,15 @@ impl<'a> Parser<'a> {
                     LineType::IfChange => {
                         self.record_error(i, "");
                     }
-                    LineType::ThenChangeInline => {
-                        builder.then_change_push((i, line.to_string()));
+                    LineType::ThenChangeInline(then_change_path) => {
+                        builder.then_change_push((
+                            i,
+                            BlockKey {
+                                path: then_change_path.to_string(),
+                            },
+                        ));
+                        builder.then_change_lineno(i);
+                        builder.end_change_lineno(i);
 
                         match builder.build() {
                             Ok(block_node) => self.block_nodes.push(block_node),
@@ -103,7 +116,8 @@ impl<'a> Parser<'a> {
                         self.parse_state = ParseState::NoOp;
                     }
                     LineType::ThenChangeBlockStart => {
-                        self.parse_state = ParseState::ThenChange(builder.clone());
+                        self.parse_state =
+                            ParseState::ThenChange(builder.then_change_lineno(i).clone());
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
                         self.record_error(i, "");
@@ -115,18 +129,25 @@ impl<'a> Parser<'a> {
                         self.parse_state = ParseState::NoOp;
                     }
                     LineType::Comment => {
-                        builder.then_change_push((i, line.to_string()));
+                        builder.then_change_push((
+                            i,
+                            BlockKey {
+                                path: line.to_string(),
+                            },
+                        ));
                     }
                     LineType::IfChange => {
                         self.record_error(i, "");
                     }
-                    LineType::ThenChangeInline => {
+                    LineType::ThenChangeInline(_) => {
                         self.record_error(i, "");
                     }
                     LineType::ThenChangeBlockStart => {
                         self.record_error(i, "");
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
+                        builder.end_change_lineno(i);
+
                         match builder.build() {
                             Ok(block_node) => self.block_nodes.push(block_node),
                             Err(_) => self.record_error(
@@ -144,15 +165,16 @@ impl<'a> Parser<'a> {
         match self.parse_state {
             ParseState::NoOp => {}
             _ => {
-                self.record_error(self.input_content.lines().count(), "");
+                self.record_error(
+                    self.input_content.lines().count(),
+                    "if-change-then-change was not closed",
+                );
             }
         }
 
         if !self.errors.is_empty() {
             return Err(self.errors);
         }
-
-        log::debug!("errors are empty");
 
         Ok(self.block_nodes)
     }
@@ -258,7 +280,7 @@ pub struct FileNodeParseError {
 impl fmt::Display for FileNodeParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for diagnostic in self.diagnostics.iter() {
-            write!(f, "{}\n", diagnostic)?
+            write!(f, "{}\n", diagnostic)?;
         }
 
         fmt::Result::Ok(())
@@ -278,6 +300,21 @@ impl FileNode {
         FileNode { blocks: blocks }
     }
 
+    pub fn get_corresponding_block(&self, src_block: &BlockNode) -> Option<&BlockNode> {
+        // Linear search is fast enough for our purposes. It's very unlikely that a file will
+        // have enough ICTC blocks for linear search to be slow (working around this would
+        // require indexing the ICTC blocks, which is hard in Rust because that means
+        // self-referential structs).
+        for dst_block in self.blocks.iter() {
+            for (_, then_change_key) in dst_block.then_change.iter() {
+                if then_change_key == &src_block.key {
+                    return Some(&dst_block);
+                }
+            }
+        }
+        None
+    }
+
     pub fn from_str(path: &str, s: &str) -> Result<FileNode, FileNodeParseError> {
         match Parser::new(path, s).parse() {
             Ok(block_nodes) => Ok(FileNode::new(block_nodes)),
@@ -288,14 +325,37 @@ impl FileNode {
     }
 }
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct BlockKey {
+    pub path: String,
+}
+
 #[derive(Builder, Clone, Debug, PartialEq, Eq)]
 pub struct BlockNode {
-    // content_range is if_change_lineno to end of then_change_linenos
-    if_change_lineno: usize,
-    // pairs of lineno, then_change_path
+    // BlockNode keys are NOT required to be unique per BlockNode.
+    // We allow using the then-change paths to resolve a BlockNode; that is,
+    // if foo.sh contains an "if-change ... then-change bar1.sh" on L4-6 and
+    // "if-change ... then-change bar2.sh" on L8-10, when searching for the
+    // BlockNode corresponding to bar2.sh, we can use "then-change bar2.sh"
+    // to resolve to the second BlockNode.
+    pub key: BlockKey,
+
+    // pairs of (lineno, then_change_block)
     #[builder(setter(each(name = "then_change_push")))]
-    then_change: Vec<(usize, String)>,
-    //then_change_lineno: usize,
+    pub then_change: Vec<(usize, BlockKey)>,
+
+    // content_range is if_change_lineno to end_change_lineno + 1
+    if_change_lineno: usize,
+    then_change_lineno: usize,
+    end_change_lineno: usize,
+}
+
+impl BlockNode {
+    pub fn content_range(&self) -> Range<usize> {
+        self.if_change_lineno + 1..self.then_change_lineno
+        // TODO- this should be the full content range
+        //self.if_change_lineno..self.end_change_lineno + 1
+    }
 }
 
 // single-file format
