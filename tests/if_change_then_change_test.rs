@@ -385,7 +385,5 @@ tests/data/5-files/release-stress.sh:2-10 - expected change here due to change i
 }
 
 // TODO- add test case for LFS diff
-// TODO- add handling for // and -- comment delimiters, also leading spaces
 // TODO- validate that diffs match the current state of the file
 // TODO- add tests for malformed ictc blocks
-// TODO- implement ordering for diagnostics
