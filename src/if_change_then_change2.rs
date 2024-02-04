@@ -13,8 +13,9 @@ enum ParseState {
 }
 
 enum LineType<'a> {
-    NotComment,
-    Comment,
+    // We can't distinguish between "Comment" and "NotComment" source code lines because we support
+    // using block comments for if-change-then-change directives; see Parser::from_str
+    SourceCode,
     IfChange,
     ThenChangeInline(&'a str),
     ThenChangeBlockStart,
@@ -93,43 +94,48 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return LineType::Comment;
-
-        return if line.starts_with("#") {
-            LineType::Comment
-        } else {
-            LineType::NotComment
-        };
+        return LineType::SourceCode;
     }
 
     /// Parsing follows these principles:
     ///
-    ///     - if the syntax looks plausible to a human, then the parser must either consider it
-    ///         to be well-formed or produce an error
-    ///     - errors must be comprehensible and actionable
-    ///     - we want to handle as many languages as possible, without having to explicitly add
-    ///         support for them
+    ///   - If the syntax looks plausible to a human, then the parser must either consider it
+    ///     to be well-formed or produce an error.
+    ///
+    ///   - Errors must be comprehensible and actionable.
+    ///
+    ///   - Users should have to repeat the "run tool, identify syntax error, fix syntax error"
+    ///     as few times as possible.
+    ///
+    ///   - We should be able to handle as many languages as possible, without having to
+    ///     explicitly add support for their comment formats. (Supporting something like Brainfuck,
+    ///     though, is very much a non-goal.)
     ///
     /// This has a number of implications:
     ///
-    ///     - parsing must be highly flexible, so that the parser can recognize anything that
-    ///         is plausible syntax
-    ///     - line numbers should point to lines that make the user's syntax error obvious
-    ///         - e.g. if there is an unterminated then-change on line 5 of a 10-line file, the
-    ///             diagnostic we return to the user should point to line 5, rather than point to
-    ///             line 10 (even though from an impl's perspective, it would be easy to simply
-    ///             complain that "we reached EOF on line 10, but never terminated the
-    ///             then-change" instead of tracking the line number of the then-change)
+    ///   - Parsing must be highly flexible, so that the parser can recognize anything that
+    ///     is plausible syntax.
+    ///
+    ///   - As many errors should be shown at a time as possible.
+    ///
+    ///   - Line numbers should point to lines that make the user's syntax error obvious.
+    ///
+    ///     For example, if there is an unterminated then-change on line 5 of a 10-line file, the
+    ///     diagnostic we return to the user should point to line 5, rather than point to EOF.
+    ///     Doing the latter is easy, since upon reaching EOF you can just complain that "reached
+    ///     EOF, but never terminated the then-change" - and many compilers/parsers _are_
+    ///     implemented this way, because they consider error quality to be secondary to their
+    ///     functionality.
     ///
     /// Based on these principles, parsing is implemented as follows:
     ///
-    ///     - the parser is a line-by-line state machine
-    ///     - lines are both a (1) state transition and (2) token for the parser
-    ///     - to maximize error readability, lines are classified into types _independently_ of
-    ///         the current state of the state machine, and the line_type is then handled
-    ///         according to the state machine
+    ///   - the parser is a line-by-line state machine
+    ///   - lines are both a (1) parser state transition and (2) parser input
+    ///   - to maximize error readability, lines are classified into types of input _independently_
+    ///     of the current state of the state machine, and each input type must then be explicitly
+    ///     handled according to the current state of the state machine
     ///
-    /// Keep reading on for an explanation of the cases we don't handle, and why.
+    /// ## Edge case handling
     ///
     /// 1. we can't eagerly recognize when a then-change has not been correctly closed:
     ///
@@ -201,7 +207,7 @@ impl<'a> Parser<'a> {
             let line_type = Self::line_type(line);
             match self.parse_state {
                 ParseState::NoOp => match line_type {
-                    LineType::NotComment | LineType::Comment => {}
+                    LineType::SourceCode => {}
                     LineType::IfChange => {
                         let mut builder = BlockNodeBuilder::default();
                         builder.key(BlockKey::new(self.input_path));
@@ -220,9 +226,7 @@ impl<'a> Parser<'a> {
                     }
                 },
                 ParseState::IfChange(_, ref mut builder) => match line_type {
-                    LineType::NotComment | LineType::Comment => {
-                        // do nothing
-                    }
+                    LineType::SourceCode => {}
                     LineType::IfChange => {
                         self.record_error(i, "if-change nesting is not allowed");
                     }
@@ -250,11 +254,7 @@ impl<'a> Parser<'a> {
                     }
                 },
                 ParseState::ThenChange(_, ref mut builder) => match line_type {
-                    LineType::NotComment => {
-                        self.record_error(i, "end-change must follow an if-change and then-change");
-                        self.parse_state = ParseState::NoOp;
-                    }
-                    LineType::Comment => {
+                    LineType::SourceCode => {
                         builder.then_change_push((
                             i,
                             BlockKey::new(line.trim_matches(|ch: char| {
