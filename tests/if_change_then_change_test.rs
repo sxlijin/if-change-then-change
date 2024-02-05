@@ -35,6 +35,7 @@ tests/data/formatting/if-change.foo:97 - then-change references file that does n
 fn malformed_syntax() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/malformed/if-change.diff")?;
 
+    // TODO- if-change.foo should not be in this list
     assert_eq!(
         run.stdout,
         "\
@@ -42,6 +43,8 @@ tests/data/malformed/if-change-then-end-change.foo:2 - if-change must be closed 
 tests/data/malformed/if-change-then-end-change.foo:5 - end-change must close an if-change and then-change, but found no then-change to close (found if-change on line 2)
 tests/data/malformed/if-change-then-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
 tests/data/malformed/if-change-then-if-change.foo:4 - if-change may not be nested in another if-change
+tests/data/malformed/if-change.foo:8 - then-change references file that does not exist: 'then-change-nonexistent.foo'
+tests/data/malformed/if-change.foo:9 - then-change references file that does not exist: 'end-change-nonexistent.foo'
 tests/data/malformed/nested-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
 tests/data/malformed/nested-if-change.foo:4 - if-change may not be nested in another if-change
 tests/data/malformed/nested-if-change.foo:7 - then-change must close an if-change, but found no if-change to close
