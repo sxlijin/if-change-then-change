@@ -4,7 +4,7 @@ use test_log::test;
 mod framework;
 
 #[test]
-fn formatting() -> anyhow::Result<()> {
+fn comment_formats_and_indentation_levels() -> anyhow::Result<()> {
     let run = framework::run_tool("tests/data/formatting/if-change.diff")?;
 
     assert_eq!(run.stdout, "\
@@ -26,6 +26,37 @@ tests/data/formatting/if-change.foo:87 - then-change references file that does n
 tests/data/formatting/if-change.foo:88 - then-change references file that does not exist: 'then-change-block6b.foo'
 tests/data/formatting/if-change.foo:97 - then-change references file that does not exist: 'then-change-block7.foo'
 ");
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn malformed_syntax() -> anyhow::Result<()> {
+    let run = framework::run_tool("tests/data/malformed/if-change.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+tests/data/malformed/if-change-then-end-change.foo:2 - then-change must follow an if-change
+tests/data/malformed/if-change-then-end-change.foo:5 - end-change must follow an if-change and then-change
+
+tests/data/malformed/if-change-then-if-change.foo:5 - if-change nesting is not allowed
+tests/data/malformed/if-change-then-if-change.foo:8 - end-change must follow an if-change and then-change
+tests/data/malformed/nested-if-change.foo:4 - if-change nesting is not allowed
+tests/data/malformed/nested-if-change.foo:7 - then-change must follow an if-change
+
+tests/data/malformed/orphaned-end-change.foo:4 - end-change must follow an if-change and then-change
+tests/data/malformed/orphaned-then-change-block.foo:4 - then-change must follow an if-change
+tests/data/malformed/orphaned-then-change-block.foo:6 - end-change must follow an if-change and then-change
+tests/data/malformed/orphaned-then-change-inline.foo:4 - then-change must follow an if-change
+tests/data/malformed/then-change-into-if-change.foo:5 - end-change must follow an if-change and then-change
+tests/data/malformed/then-change-into-then-change-block.foo:6 - end-change must follow an if-change and then-change
+tests/data/malformed/then-change-into-then-change-inline.foo:5 - end-change must follow an if-change and then-change
+tests/data/malformed/unterminated-if-change.foo:2 - then-change must follow an if-change
+tests/data/malformed/unterminated-then-change.foo:6 - end-change must follow an if-change and then-change
+"
+    );
     assert_eq!(run.exit_code, 0);
 
     Ok(())

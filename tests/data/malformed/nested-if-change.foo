@@ -1,0 +1,7 @@
+lorem
+# if-change
+ipsum
+# if-change
+dolor
+# then-change if-change2.foo
+# then-change if-change.foo

@@ -1,0 +1,12 @@
+# if-change
+lorem
+# then-change
+empty string is invalid path
+
+space-only is invalid path
+    
+tab-only is invalid path
+		
+punctuation is invalid path
+  .-`~
+# end-change

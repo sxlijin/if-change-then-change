@@ -1,0 +1,3 @@
+# if-change
+lorem ipsum dolor
+# then-change tests/data/malformed/if-change.foo
