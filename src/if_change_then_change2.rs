@@ -53,47 +53,69 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn is_comment_prefix(s: &str) -> bool {
-        s.chars()
+    /// Comment prefixes may contain only punctuation or whitespace; they may not have ascii
+    /// alphanumeric, UTF-8 alphanumeric e.g. umlauts/accents, emojis, etc. This allows
+    /// "<!--if-change-->" and "# if-change" and "#if-change" while disallowing all else.
+    fn is_comment_prefix(prefix: &str) -> bool {
+        prefix
+            .chars()
             .all(|ch| ch.is_ascii_punctuation() || ch.is_ascii_whitespace())
     }
 
+    /// Comment suffixes must start with a word boundary and end with only punctuation or
+    /// whitespace. The remainder of the suffix is considered its "label", and labels are
+    /// (currently) only allowed for then-change-inline directives (that is, if-change and
+    /// end-change directives may not have labels).
+    ///
+    /// See `test::comment_suffix_label` for a specification of this method's behavior.
+    fn comment_suffix_label(suffix: &'a str) -> Option<&'a str> {
+        let trimmed = suffix
+            .trim_end_matches(|ch: char| ch.is_ascii_punctuation() || ch.is_ascii_whitespace());
+
+        if trimmed.is_empty() {
+            return Some("");
+        }
+        if trimmed
+            .chars()
+            .nth(0)
+            .map_or(false, |ch| ch.is_ascii_whitespace())
+        {
+            return Some(trimmed.trim_start());
+        }
+        None
+    }
+
     fn line_type(line: &'a str) -> LineType<'a> {
-        if let Some((pre, post)) = line.split_once("if-change") {
-            if Parser::is_comment_prefix(pre)
-                && post
-                    .trim_end_matches(|ch: char| {
-                        ch.is_ascii_punctuation() || ch.is_ascii_whitespace()
-                    })
-                    .chars()
-                    .nth(0)
-                    .map_or(true, |ch| ch.is_ascii_whitespace())
-            {
-                return LineType::IfChange;
-            }
-        }
-
-        if let Some((pre, post)) = line.split_once("then-change") {
-            if Parser::is_comment_prefix(pre) {
-                let post = post.trim_end_matches(|ch: char| {
-                    ch.is_ascii_punctuation() || ch.is_ascii_whitespace()
-                });
-                if post.is_empty() {
-                    return LineType::ThenChangeBlockStart;
-                }
-                if post
-                    .chars()
-                    .nth(0)
-                    .map_or(true, |ch| ch.is_ascii_whitespace())
-                {
-                    return LineType::ThenChangeInline(post.trim_start());
+        if let Some((prefix, suffix)) = line.split_once("if-change") {
+            if Parser::is_comment_prefix(prefix) {
+                if let Some(label) = Parser::comment_suffix_label(suffix) {
+                    if !label.is_empty() {
+                        // TODO- record diagnostic
+                    }
+                    return LineType::IfChange;
                 }
             }
         }
 
-        if let Some((pre, post)) = line.split_once("end-change") {
-            if Parser::is_comment_prefix(pre) {
-                return LineType::EndChangeAkaThenChangeBlockEnd;
+        if let Some((prefix, suffix)) = line.split_once("then-change") {
+            if Parser::is_comment_prefix(prefix) {
+                if let Some(label) = Parser::comment_suffix_label(suffix) {
+                    if label.is_empty() {
+                        return LineType::ThenChangeBlockStart;
+                    }
+                    return LineType::ThenChangeInline(label);
+                }
+            }
+        }
+
+        if let Some((prefix, suffix)) = line.split_once("end-change") {
+            if Parser::is_comment_prefix(prefix) {
+                if let Some(label) = Parser::comment_suffix_label(suffix) {
+                    if !label.is_empty() {
+                        // TODO- record diagnostic
+                    }
+                    return LineType::EndChangeAkaThenChangeBlockEnd;
+                }
             }
         }
 
@@ -137,19 +159,19 @@ impl<'a> Parser<'a> {
     ///   - to maximize error readability, lines are classified into types of input _independently_
     ///     of the current state of the state machine, and each input type must then be explicitly
     ///     handled according to the current state of the state machine
-    /// 
+    ///
     /// ## Open questions
-    /// 
+    ///
     ///   - Error message copy. A lot of errors take one of these two forms:
-    /// 
+    ///
     ///       - "$clause must close $other-clause, but found no $other-clause to close"
     ///       - "$clause must be closed by $other-clause, but found no such $other-clause"
-    /// 
+    ///
     ///     I don't love this copy, in part because they it isn't explicit about what the
     ///     corrective action should be. I was hoping to land on something like:
-    /// 
+    ///
     ///       - "$clause must be closed by $other-clause, please add an $other-clause"
-    /// 
+    ///
     ///     but I like that copy even less.
     ///
     /// ## Edge case handling
@@ -223,29 +245,31 @@ impl<'a> Parser<'a> {
         for (i, line) in self.input_content.lines().enumerate() {
             let line_type = Self::line_type(line);
             match self.parse_state {
-                ParseState::NoOp => match line_type {
-                    LineType::SourceCode => {}
-                    LineType::IfChange => {
-                        let mut builder = BlockNodeBuilder::default();
-                        builder.key(BlockKey::new(self.input_path));
-                        builder.if_change_lineno(i);
+                ParseState::NoOp => {
+                    match line_type {
+                        LineType::SourceCode => {}
+                        LineType::IfChange => {
+                            let mut builder = BlockNodeBuilder::default();
+                            builder.key(BlockKey::new(self.input_path));
+                            builder.if_change_lineno(i);
 
-                        self.parse_state = ParseState::IfChange(i, builder);
-                    }
-                    LineType::ThenChangeInline(_) => {
-                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
-                    }
-                    LineType::ThenChangeBlockStart => {
-                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
-                        self.parse_state = ParseState::ThenChangeInvalid(i);
-                    }
-                    LineType::EndChangeAkaThenChangeBlockEnd => {
-                        self.record_error(
+                            self.parse_state = ParseState::IfChange(i, builder);
+                        }
+                        LineType::ThenChangeInline(_) => {
+                            self.record_error(i, "then-change must close an if-change, but found no if-change to close");
+                        }
+                        LineType::ThenChangeBlockStart => {
+                            self.record_error(i, "then-change must close an if-change, but found no if-change to close");
+                            self.parse_state = ParseState::ThenChangeInvalid(i);
+                        }
+                        LineType::EndChangeAkaThenChangeBlockEnd => {
+                            self.record_error(
                                 i,
                                 "end-change must close an if-change and then-change, but found neither",
                             );
+                        }
                     }
-                },
+                }
                 ParseState::IfChange(i_if, ref mut builder) => match line_type {
                     LineType::SourceCode => {}
                     LineType::IfChange => {
@@ -282,7 +306,7 @@ impl<'a> Parser<'a> {
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
                         self.record_error(
-                            i, 
+                            i,
                             format!(
                                 "end-change must close an if-change and then-change, but found no then-change to close (found if-change on line {})",
                                 i_if + 1
@@ -290,81 +314,85 @@ impl<'a> Parser<'a> {
                         );
                     }
                 },
-                ParseState::ThenChange(i_then, ref mut builder) => match line_type {
-                    LineType::SourceCode => {
-                        let path = line.trim_matches(|ch: char| {
+                ParseState::ThenChange(i_then, ref mut builder) => {
+                    match line_type {
+                        LineType::SourceCode => {
+                            let path = line.trim_matches(|ch: char| {
                                 ch.is_ascii_punctuation() || ch.is_ascii_whitespace()
                             });
 
-                        if path.is_empty() {
-                            // TODO - need to record a diagnostic here
-                            // self.record_error(i, "no valid path found for then-change");
+                            if path.is_empty() {
+                                // TODO - need to record a diagnostic here
+                                // self.record_error(i, "no valid path found for then-change");
+                            }
+                            builder.then_change_push((i, BlockKey::new(path)));
                         }
-                        builder.then_change_push(( i, BlockKey::new(path)));
-                    }
-                    LineType::IfChange => {
-                        self.record_error(
+                        LineType::IfChange => {
+                            self.record_error(
                             i_then,
                             "then-change must be closed by an end-change, but found no such end-change",
                         );
 
-                        let mut builder = BlockNodeBuilder::default();
-                        builder.key(BlockKey::new(self.input_path));
-                        builder.if_change_lineno(i);
+                            let mut builder = BlockNodeBuilder::default();
+                            builder.key(BlockKey::new(self.input_path));
+                            builder.if_change_lineno(i);
 
-                        self.parse_state = ParseState::IfChange(i, builder);
-                    }
-                    LineType::ThenChangeInline(_) => {
-                        self.record_error(
-                            i_then,
-                            "then-change must be closed by an end-change, but found no such end-change",
-                        );
-                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
-                    }
-                    LineType::ThenChangeBlockStart => {
-                        self.record_error(
-                            i_then,
-                            "then-change must be closed by an end-change, but found no such end-change",
-                        );
-                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
-                    }
-                    LineType::EndChangeAkaThenChangeBlockEnd => {
-                        builder.end_change_lineno(i);
-
-                        match builder.build() {
-                            Ok(block_node) => self.block_nodes.push(block_node),
-                            Err(_) => self.record_error(
-                                i,
-                                "internal error: failed to parse if-change-then-change",
-                            ),
+                            self.parse_state = ParseState::IfChange(i, builder);
                         }
+                        LineType::ThenChangeInline(_) => {
+                            self.record_error(
+                            i_then,
+                            "then-change must be closed by an end-change, but found no such end-change",
+                        );
+                            self.record_error(i, "then-change must close an if-change, but found no if-change to close");
+                        }
+                        LineType::ThenChangeBlockStart => {
+                            self.record_error(
+                            i_then,
+                            "then-change must be closed by an end-change, but found no such end-change",
+                        );
+                            self.record_error(i, "then-change must close an if-change, but found no if-change to close");
+                        }
+                        LineType::EndChangeAkaThenChangeBlockEnd => {
+                            builder.end_change_lineno(i);
 
-                        self.parse_state = ParseState::NoOp;
+                            match builder.build() {
+                                Ok(block_node) => self.block_nodes.push(block_node),
+                                Err(_) => self.record_error(
+                                    i,
+                                    "internal error: failed to parse if-change-then-change",
+                                ),
+                            }
+
+                            self.parse_state = ParseState::NoOp;
+                        }
                     }
-                },
+                }
                 // We record the error for the invalid then-change on line i_then when we
                 // transition into ThenChangeInvalid
-                ParseState::ThenChangeInvalid(_) => match line_type {
-                    LineType::SourceCode => {}
-                    LineType::IfChange => {
-                        let mut builder = BlockNodeBuilder::default();
-                        builder.key(BlockKey::new(self.input_path));
-                        builder.if_change_lineno(i);
+                ParseState::ThenChangeInvalid(_) => {
+                    match line_type {
+                        LineType::SourceCode => {}
+                        LineType::IfChange => {
+                            let mut builder = BlockNodeBuilder::default();
+                            builder.key(BlockKey::new(self.input_path));
+                            builder.if_change_lineno(i);
 
-                        self.parse_state = ParseState::IfChange(i, builder);
+                            self.parse_state = ParseState::IfChange(i, builder);
+                        }
+                        LineType::ThenChangeInline(_) => {
+                            self.record_error(i, "then-change must close an if-change, but found no if-change to close");
+                        }
+                        LineType::ThenChangeBlockStart => {
+                            self.record_error(i, "then-change must close an if-change, but found no if-change to close");
+                        }
+                        LineType::EndChangeAkaThenChangeBlockEnd => {
+                            // Do not record an error here - it would be redundant with the error we
+                            // recorded when we entered ThenChangeInvalid.
+                            self.parse_state = ParseState::NoOp;
+                        }
                     }
-                    LineType::ThenChangeInline(_) => {
-                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
-                    }
-                    LineType::ThenChangeBlockStart => {
-                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
-                    }
-                    LineType::EndChangeAkaThenChangeBlockEnd => {
-                        // Do not record an error here - it would be redundant with the error we
-                        // recorded when we entered ThenChangeInvalid.
-                        self.parse_state = ParseState::NoOp;
-                    }
-                },
+                }
             }
         }
 
@@ -385,13 +413,13 @@ impl<'a> Parser<'a> {
                 // since showing a lot of "'c = a + b' is not a file" errors would be pure spam).
                 self.record_error(
                     i,
-                    "then-change must be closed by an end-change, but found no such end-change"
+                    "then-change must be closed by an end-change, but found no such end-change",
                 );
             }
             ParseState::ThenChangeInvalid(i) => {
                 self.record_error(
                     i,
-                    "then-change must be closed by an end-change, but found no such end-change"
+                    "then-change must be closed by an end-change, but found no such end-change",
                 );
             }
         }
@@ -772,6 +800,30 @@ mod test {
             then_change_lineno: 35,
             end_change_lineno: 35,
         });
+
+        Ok(())
+    }
+
+    #[test]
+    fn comment_suffix_label() -> anyhow::Result<()> {
+        for (line, expected_label) in vec![
+            ("# then-change", Some("")),
+            ("# then-change    ", Some("")),
+            ("# then-change-other    ", None),
+            ("then-change-other    ", None),
+            ("# then-change other.file", Some("other.file")),
+            ("# then-change other.file  ", Some("other.file")),
+            ("<!-- then-change other.file -->", Some("other.file")),
+            ("<!-- then-change other.file-->", Some("other.file")),
+            ("<!-- then-change other.file----->", Some("other.file")),
+        ] {
+            let (_, suffix) = line
+                .split_once("then-change")
+                .ok_or(anyhow!("Failed to split the line"))?;
+            assert_that!(Parser::comment_suffix_label(suffix))
+                .named(format!("comment suffix label for line {:?}", line).as_str())
+                .is_equal_to(expected_label);
+        }
 
         Ok(())
     }

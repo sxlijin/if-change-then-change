@@ -1,6 +1,8 @@
 # if-change
 lorem
 # then-change
+# then-change-nonexistent.foo
+# end-change-nonexistent.foo
 empty string is invalid path
 
 space-only is invalid path
