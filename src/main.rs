@@ -87,32 +87,36 @@ fn run() -> Result<()> {
         let mut ret = HashMap::new();
         let mut search = diffs_by_post_diff_path
             .keys()
-            .map(|path| ("stdin".to_string(), path.clone()))
-            .collect::<VecDeque<(String, String)>>();
-
-        loop {
-            let Some((diagnostic_path, path)) = search.pop_front() else {
-                break;
-            };
-
-            let Ok(file_contents) = std::fs::read_to_string(&path) else {
-                // TODO- we should complain when attempts to read other files fail as well
-                if diagnostic_path == "stdin" {
-                    diagnostics.push(Diagnostic {
-                        // TODO- in what cases does the post-diff path not exist?
-                        // TODO- if a file is deleted, the post-diff path is... /dev/null?
+            .map(|path| {
+                (
+                    Diagnostic {
                         path: "stdin".to_string(),
                         // TODO- for files we're reading because they were in the diff,
                         //       start_line should be the line in the diff
-                        // TODO- for files we're reading because they were in a then-change,
-                        //       start_line should be Some(*then_change_lineno)
                         start_line: None,
                         end_line: None,
                         // TODO- read_to_string can fail for other reasons (e.g.
                         // $path is a dir, $path does not allow reads)
                         message: format!("diff references file that does not exist: '{}'", path),
-                    });
-                }
+                    },
+                    path.clone(),
+                )
+            })
+            .collect::<VecDeque<(Diagnostic, String)>>();
+
+        loop {
+            let Some((diagnostic_if_read_fails, path)) = search.pop_front() else {
+                break;
+            };
+
+            // $path entries come from one of two sources: either it is a path present in the input
+            // diffs, or it is a then-change path in one of the former paths. In the first case,
+            // this is where we do the file-exists validation; in the second case, we check
+            // `Path::exists` before attempting to read the file here.
+            let Ok(file_contents) = std::fs::read_to_string(&path) else {
+                // TODO- in what cases does the post-diff path not exist?
+                // TODO- if a file is deleted, the post-diff path is... /dev/null?
+                diagnostics.push(diagnostic_if_read_fails);
                 continue;
             };
             match if_change_then_change2::FileNode::from_str(&path, &file_contents) {
@@ -146,7 +150,15 @@ fn run() -> Result<()> {
                                 }
                                 if !ret.contains_key(&then_change_key.path) {
                                     search.push_back((
-                                        block.key.path.clone(),
+                                        Diagnostic {
+                                            path: block.key.path.clone(),
+                                            start_line: Some(*then_change_lineno),
+                                            end_line: None,
+                                            message: format!(
+                                                "then-change references file that could not be read: '{}'",
+                                                then_change_key.path
+                                            ),
+                                        },
                                         then_change_key.path.clone(),
                                     ));
                                 }
