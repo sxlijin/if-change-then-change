@@ -43,8 +43,6 @@ tests/data/malformed/if-change-then-end-change.foo:2 - if-change must be closed 
 tests/data/malformed/if-change-then-end-change.foo:5 - end-change must close an if-change and then-change, but found no then-change to close (found if-change on line 2)
 tests/data/malformed/if-change-then-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
 tests/data/malformed/if-change-then-if-change.foo:4 - if-change may not be nested in another if-change
-tests/data/malformed/if-change.foo:8 - then-change references file that does not exist: 'then-change-nonexistent.foo'
-tests/data/malformed/if-change.foo:9 - then-change references file that does not exist: 'end-change-nonexistent.foo'
 tests/data/malformed/nested-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
 tests/data/malformed/nested-if-change.foo:4 - if-change may not be nested in another if-change
 tests/data/malformed/nested-if-change.foo:7 - then-change must close an if-change, but found no if-change to close
@@ -56,6 +54,16 @@ tests/data/malformed/orphaned-then-change-inline.foo:4 - then-change must close 
 tests/data/malformed/then-change-into-if-change.foo:4 - then-change must be closed by an end-change, but found no such end-change
 tests/data/malformed/then-change-into-if-change.foo:5 - if-change must be closed by a then-change, but found no such then-change
 tests/data/malformed/then-change-into-if-change.foo:7 - end-change must close an if-change and then-change, but found no then-change to close (found if-change on line 5)
+tests/data/malformed/then-change-into-invalid-paths.foo:4 - then-change references file that does not exist: 'then-change-nonexistent.foo'
+tests/data/malformed/then-change-into-invalid-paths.foo:5 - then-change references file that does not exist: 'end-change-nonexistent.foo'
+tests/data/malformed/then-change-into-invalid-paths.foo:6 - then-change references file that does not exist: 'empty string is invalid path'
+tests/data/malformed/then-change-into-invalid-paths.foo:7 - then-change references file that does not exist: ''
+tests/data/malformed/then-change-into-invalid-paths.foo:8 - then-change references file that does not exist: 'space-only is invalid path'
+tests/data/malformed/then-change-into-invalid-paths.foo:9 - then-change references file that does not exist: ''
+tests/data/malformed/then-change-into-invalid-paths.foo:10 - then-change references file that does not exist: 'tab-only is invalid path'
+tests/data/malformed/then-change-into-invalid-paths.foo:11 - then-change references file that does not exist: ''
+tests/data/malformed/then-change-into-invalid-paths.foo:12 - then-change references file that does not exist: 'punctuation is invalid path'
+tests/data/malformed/then-change-into-invalid-paths.foo:13 - then-change references file that does not exist: ''
 tests/data/malformed/then-change-into-then-change-block.foo:4 - then-change must be closed by an end-change, but found no such end-change
 tests/data/malformed/then-change-into-then-change-block.foo:6 - then-change must close an if-change, but found no if-change to close
 tests/data/malformed/then-change-into-then-change-inline.foo:4 - then-change must be closed by an end-change, but found no such end-change

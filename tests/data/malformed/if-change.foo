@@ -5,8 +5,6 @@ lorem ipsum dolor
 # if-change
 sit amet
 # then-change
-# then-change-nonexistent.foo
-# end-change-nonexistent.foo
 tests/data/malformed/if-change-then-end-change.foo
 tests/data/malformed/if-change-then-if-change.foo
 tests/data/malformed/nested-if-change.foo

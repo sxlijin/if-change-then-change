@@ -4,6 +4,7 @@ mod if_change_then_change2;
 use crate::diagnostic::{Diagnostic, DiagnosticPosition};
 use anyhow::Result;
 use if_change_then_change2::FileNodeParseError;
+use std::collections::VecDeque;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::io::Read;
@@ -79,92 +80,86 @@ fn run() -> Result<()> {
         })
         .collect::<HashMap<String, &unidiff::PatchedFile>>();
 
-    // To discover and parse all the if-change-then-change blocks relevant to this change, we do a two-step search:
-    //
-    //   1. find all if-change-then-change blocks in the paths present in the diff
-    //   2. for every ictc block, also parse every path in a then-change block
-    //
-    // i.e. we do a BFS 1 layer deep. This is sufficient for well-formed paths, but unclear if it's sufficient for more complex forms.
+    // To discover and parse all the if-change-then-change blocks relevant to this change, we do a
+    // BFS starting from every path present in the diff, and then move on to every then-change
+    // referenced in each file we read.
     let file_nodes_by_path = {
-        let mut first_pass = HashMap::new();
-        for path in diffs_by_post_diff_path.keys() {
-            let Ok(file_contents) = std::fs::read_to_string(path) else {
-                diagnostics.push(Diagnostic {
-                    // TODO- in what cases does the post-diff path not exist?
-                    // TODO- if a file is deleted, the post-diff path is... /dev/null?
-                    path: "stdin".to_string(),
-                    // TODO- $lines should reference the diff line pointing at $path
-                    start_line: None,
-                    end_line: None,
-                    // TODO- read_to_string can fail for other reasons (e.g.
-                    // $path is a dir, $path does not allow reads)
-                    message: format!("diff references file that does not exist: '{}'", path),
-                });
+        let mut ret = HashMap::new();
+        let mut search = diffs_by_post_diff_path
+            .keys()
+            .map(|path| ("stdin".to_string(), path.clone()))
+            .collect::<VecDeque<(String, String)>>();
+
+        loop {
+            let Some((diagnostic_path, path)) = search.pop_front() else {
+                break;
+            };
+
+            let Ok(file_contents) = std::fs::read_to_string(&path) else {
+                // TODO- we should complain when attempts to read other files fail as well
+                if diagnostic_path == "stdin" {
+                    diagnostics.push(Diagnostic {
+                        // TODO- in what cases does the post-diff path not exist?
+                        // TODO- if a file is deleted, the post-diff path is... /dev/null?
+                        path: "stdin".to_string(),
+                        // TODO- for files we're reading because they were in the diff,
+                        //       start_line should be the line in the diff
+                        // TODO- for files we're reading because they were in a then-change,
+                        //       start_line should be Some(*then_change_lineno)
+                        start_line: None,
+                        end_line: None,
+                        // TODO- read_to_string can fail for other reasons (e.g.
+                        // $path is a dir, $path does not allow reads)
+                        message: format!("diff references file that does not exist: '{}'", path),
+                    });
+                }
                 continue;
             };
-            match if_change_then_change2::FileNode::from_str(path, &file_contents) {
-                Ok(file_node) => {
-                    first_pass.insert(path.clone(), file_node);
-                }
+            match if_change_then_change2::FileNode::from_str(&path, &file_contents) {
                 Err(error) => {
                     diagnostics.extend(error.diagnostics);
                 }
-            }
+                Ok(mut file_node) => {
+                    for block in file_node.blocks.iter_mut() {
+                        block.then_change = block
+                            .then_change
+                            .drain(..)
+                            .filter(|(then_change_lineno, then_change_key)| {
+                                if diffs_by_post_diff_path.contains_key(&then_change_key.path) {
+                                    return true;
+                                }
+                                if block.key.path == then_change_key.path {
+                                    // We silently ignore self-referential then-change entries.
+                                    return false;
+                                }
+                                if !std::path::Path::new(&then_change_key.path).exists() {
+                                    diagnostics.push(Diagnostic {
+                                        path: block.key.path.clone(),
+                                        start_line: Some(*then_change_lineno),
+                                        end_line: None,
+                                        message: format!(
+                                            "then-change references file that does not exist: '{}'",
+                                            then_change_key.path
+                                        ),
+                                    });
+                                    return false;
+                                }
+                                if !ret.contains_key(&then_change_key.path) {
+                                    search.push_back((
+                                        block.key.path.clone(),
+                                        then_change_key.path.clone(),
+                                    ));
+                                }
+                                true
+                            })
+                            .collect();
+                    }
+                    ret.insert(path.clone(), file_node);
+                }
+            };
         }
 
-        let mut second_pass = HashMap::new();
-        for (path, mut file_node) in first_pass {
-            file_node.blocks = file_node
-                .blocks
-                .into_iter()
-                .map(|mut block| {
-                    let content_range = block.content_range();
-                    block.then_change = block
-                        .then_change
-                        .into_iter()
-                        .filter(|(then_change_lineno, then_change_key)| {
-                            if diffs_by_post_diff_path.contains_key(&then_change_key.path) {
-                                return true;
-                            }
-                            if block.key.path == then_change_key.path {
-                                // We silently ignore self-referential then-change entries.
-                                return false;
-                            }
-                            let Ok(file_contents) = std::fs::read_to_string(&then_change_key.path)
-                            else {
-                                diagnostics.push(Diagnostic {
-                                    path: block.key.path.clone(),
-                                    start_line: Some(*then_change_lineno),
-                                    end_line: None,
-                                    message: format!(
-                                        "then-change references file that does not exist: '{}'",
-                                        then_change_key.path
-                                    ),
-                                });
-                                return false;
-                            };
-                            match if_change_then_change2::FileNode::from_str(
-                                &then_change_key.path,
-                                &file_contents,
-                            ) {
-                                Ok(file_node) => {
-                                    second_pass.insert(then_change_key.path.clone(), file_node);
-                                }
-                                Err(error) => {
-                                    diagnostics.extend(error.diagnostics);
-                                }
-                            };
-                            true
-                        })
-                        .collect();
-
-                    block
-                })
-                .collect();
-            second_pass.insert(path, file_node);
-        }
-
-        second_pass
+        ret
     };
 
     // Before we can generate diagnostics, we also need to know, for each
