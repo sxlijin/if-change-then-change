@@ -217,10 +217,10 @@ impl<'a> Parser<'a> {
                         self.parse_state = ParseState::IfChange(i, builder);
                     }
                     LineType::ThenChangeInline(_) => {
-                        self.record_error(i, "then-change must match an if-change, but found none");
+                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
                     }
                     LineType::ThenChangeBlockStart => {
-                        self.record_error(i, "then-change must match an if-change, but found none");
+                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
                         self.record_error(
@@ -297,16 +297,16 @@ impl<'a> Parser<'a> {
                     LineType::ThenChangeInline(_) => {
                         self.record_error(
                             i_then,
-                            "then-change must match an end-change, but found none",
+                            "then-change must be closed by an end-change, but found no such end-change",
                         );
-                        self.record_error(i, "then-change must match an if-change, but found none");
+                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
                     }
                     LineType::ThenChangeBlockStart => {
                         self.record_error(
                             i_then,
-                            "then-change must match an end-change, but found none",
+                            "then-change must be closed by an end-change, but found no such end-change",
                         );
-                        self.record_error(i, "then-change must match an if-change, but found none");
+                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
                         builder.end_change_lineno(i);
@@ -330,7 +330,7 @@ impl<'a> Parser<'a> {
             ParseState::IfChange(i, _) => {
                 self.record_error(
                     i,
-                    "if-change must be closed by a then-change, but found none",
+                    "if-change must be closed by a then-change, but found no such then-change",
                 );
             }
             ParseState::ThenChange(i, _) => {
@@ -340,7 +340,10 @@ impl<'a> Parser<'a> {
                 // end-change, since if the unterminated then-change block is near the front of a
                 // 1k+ line file, using EOF as the end of the then-change would be useless (esp.
                 // since showing a lot of "'c = a + b' is not a file" errors would be pure spam).
-                self.record_error(i, "end-change must follow an if-change and then-change");
+                self.record_error(
+                    i,
+                    format!("then-change must be closed by an end-change, but found no such end-change")
+                );
             }
         }
 

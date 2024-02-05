@@ -9,7 +9,8 @@ tests/data/malformed/if-change-then-end-change.foo
 tests/data/malformed/if-change-then-if-change.foo
 tests/data/malformed/nested-if-change.foo
 tests/data/malformed/orphaned-end-change.foo
-tests/data/malformed/orphaned-then-change-block.foo
+tests/data/malformed/orphaned-then-change-block-terminated.foo
+tests/data/malformed/orphaned-then-change-block-unterminated.foo
 tests/data/malformed/orphaned-then-change-inline.foo
 tests/data/malformed/then-change-into-invalid-paths.foo
 tests/data/malformed/then-change-into-if-change.foo

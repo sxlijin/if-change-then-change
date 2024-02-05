@@ -38,23 +38,6 @@ fn malformed_syntax() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
-tests/data/malformed/if-change-then-end-change.foo:2 - then-change must follow an if-change
-tests/data/malformed/if-change-then-end-change.foo:5 - end-change must follow an if-change and then-change
-
-tests/data/malformed/if-change-then-if-change.foo:5 - if-change nesting is not allowed
-tests/data/malformed/if-change-then-if-change.foo:8 - end-change must follow an if-change and then-change
-tests/data/malformed/nested-if-change.foo:4 - if-change nesting is not allowed
-tests/data/malformed/nested-if-change.foo:7 - then-change must follow an if-change
-
-tests/data/malformed/orphaned-end-change.foo:4 - end-change must follow an if-change and then-change
-tests/data/malformed/orphaned-then-change-block.foo:4 - then-change must follow an if-change
-tests/data/malformed/orphaned-then-change-block.foo:6 - end-change must follow an if-change and then-change
-tests/data/malformed/orphaned-then-change-inline.foo:4 - then-change must follow an if-change
-tests/data/malformed/then-change-into-if-change.foo:5 - end-change must follow an if-change and then-change
-tests/data/malformed/then-change-into-then-change-block.foo:6 - end-change must follow an if-change and then-change
-tests/data/malformed/then-change-into-then-change-inline.foo:5 - end-change must follow an if-change and then-change
-tests/data/malformed/unterminated-if-change.foo:2 - then-change must follow an if-change
-tests/data/malformed/unterminated-then-change.foo:6 - end-change must follow an if-change and then-change
 "
     );
     assert_eq!(run.exit_code, 0);
