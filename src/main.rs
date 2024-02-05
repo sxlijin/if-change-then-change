@@ -136,6 +136,15 @@ fn run() -> Result<()> {
                                     // We silently ignore self-referential then-change entries.
                                     return false;
                                 }
+                                if then_change_key.path.is_empty() {
+                                    diagnostics.push(Diagnostic {
+                                        path: block.key.path.clone(),
+                                        start_line: Some(*then_change_lineno),
+                                        end_line: None,
+                                        message: "then-change does not reference a valid path".to_string(),
+                                    });
+                                    return false;
+                                }
                                 if !std::path::Path::new(&then_change_key.path).exists() {
                                     diagnostics.push(Diagnostic {
                                         path: block.key.path.clone(),

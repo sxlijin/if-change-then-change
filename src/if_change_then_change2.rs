@@ -325,10 +325,8 @@ impl<'a> Parser<'a> {
                                 ch.is_ascii_punctuation() || ch.is_ascii_whitespace()
                             });
 
-                            if path.is_empty() {
-                                // TODO - need to record a diagnostic here
-                                // self.record_error(i, "no valid path found for then-change");
-                            }
+                            // NB: if $path is empty, we do produce a diagnostic about that;
+                            // we just don't do it here.
                             builder.then_change_push((i, BlockKey::new(path)));
                         }
                         LineType::IfChange => {
@@ -587,10 +585,8 @@ pub struct BlockKey {
 }
 
 impl BlockKey {
-    fn new(path: &str) -> BlockKey {
-        BlockKey {
-            path: path.to_string(),
-        }
+    fn new<S: Into<String>>(path: S) -> BlockKey {
+        BlockKey { path: path.into() }
     }
 }
 
