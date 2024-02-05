@@ -1,4 +1,4 @@
-use crate::diagnostic::{Diagnostic, DiagnosticPosition};
+use crate::diagnostic::Diagnostic;
 use std::fmt;
 use std::ops::Range;
 
@@ -46,11 +46,9 @@ impl<'a> Parser<'a> {
 
     fn record_error<S: Into<String>>(&mut self, lineno: usize, message: S) {
         self.errors.push(Diagnostic {
-            position: DiagnosticPosition {
-                path: self.input_path.to_string(),
-                start_line: Some(lineno),
-                end_line: None,
-            },
+            path: self.input_path.to_string(),
+            start_line: Some(lineno),
+            end_line: None,
             message: message.into(),
         })
     }

@@ -45,12 +45,10 @@ fn run() -> Result<()> {
                 // a file has been deleted (target file is /dev/null).
                 if !source_path_valid || !target_path_valid {
                     diagnostics.push(Diagnostic {
-                        position: DiagnosticPosition {
-                            path: "stdin".to_string(),
-                            // TODO- $lines should reference the lines of the diff
-                            start_line: None,
-                            end_line: None,
-                        },
+                        path: "stdin".to_string(),
+                        // TODO- $lines should reference the lines of the diff
+                        start_line: None,
+                        end_line: None,
                         message: format!(
                             "invalid git diff: expected a/before.path -> b/after.path, but got '{}' -> '{}'",
                             patched_file.source_file,
@@ -89,19 +87,11 @@ fn run() -> Result<()> {
         let mut ret = HashMap::new();
         let mut search = diffs_by_post_diff_path
             .keys()
-            .map(|path| (
-                DiagnosticPosition {
-                    path: "stdin".to_string(),
-                    // TODO- for files we're reading because they were in the diff,
-                    //       start_line should be the line in the diff
-                    start_line: None,
-                    end_line: None,
-                }
-                path.clone()))
+            .map(|path| ("stdin".to_string(), path.clone()))
             .collect::<VecDeque<(String, String)>>();
 
         loop {
-            let Some((diagnostic_position, path)) = search.pop_front() else {
+            let Some((diagnostic_path, path)) = search.pop_front() else {
                 break;
             };
 
@@ -109,7 +99,17 @@ fn run() -> Result<()> {
                 // TODO- we should complain when attempts to read other files fail as well
                 if diagnostic_path == "stdin" {
                     diagnostics.push(Diagnostic {
-                        position: diagnostic_position,
+                        // TODO- in what cases does the post-diff path not exist?
+                        // TODO- if a file is deleted, the post-diff path is... /dev/null?
+                        path: "stdin".to_string(),
+                        // TODO- for files we're reading because they were in the diff,
+                        //       start_line should be the line in the diff
+                        // TODO- for files we're reading because they were in a then-change,
+                        //       start_line should be Some(*then_change_lineno)
+                        start_line: None,
+                        end_line: None,
+                        // TODO- read_to_string can fail for other reasons (e.g.
+                        // $path is a dir, $path does not allow reads)
                         message: format!("diff references file that does not exist: '{}'", path),
                     });
                 }
@@ -134,11 +134,9 @@ fn run() -> Result<()> {
                                 }
                                 if !std::path::Path::new(&then_change_key.path).exists() {
                                     diagnostics.push(Diagnostic {
-                                        position: DiagnosticPosition {
-                                            path: block.key.path.clone(),
-                                            start_line: Some(*then_change_lineno),
-                                            end_line: None,
-                                        },
+                                        path: block.key.path.clone(),
+                                        start_line: Some(*then_change_lineno),
+                                        end_line: None,
                                         message: format!(
                                             "then-change references file that does not exist: '{}'",
                                             then_change_key.path
@@ -148,11 +146,7 @@ fn run() -> Result<()> {
                                 }
                                 if !ret.contains_key(&then_change_key.path) {
                                     search.push_back((
-                                        DiagnosticPosition {
-                                            path: block.key.path.clone(),
-                                            start_line: Some(*then_change_lineno),
-                                            end_line: None,
-                                        },
+                                        block.key.path.clone(),
                                         then_change_key.path.clone(),
                                     ));
                                 }
@@ -252,15 +246,13 @@ fn run() -> Result<()> {
             }
             if block_range.is_none() {
                 diagnostics.push(Diagnostic {
-                    position: DiagnosticPosition {
-                        path: then_change_key.path.clone(),
-                        start_line: block_range.as_ref().map(|range| range.start),
-                        end_line: block_range.as_ref().map(|range| range.end),
-                    },
+                    path: then_change_key.path.clone(),
+                    start_line: block_range.as_ref().map(|range| range.start),
+                    end_line: block_range.as_ref().map(|range| range.end),
                     message: format!(
                         "expected an if-change-then-change in this file that matches {}",
                         DiagnosticPosition {
-                            path: ictc_block.key.path.clone(),
+                            path: &ictc_block.key.path,
                             start_line: Some(ictc_block.content_range().start),
                             end_line: Some(ictc_block.content_range().end),
                         },
@@ -271,15 +263,13 @@ fn run() -> Result<()> {
             if block_range.is_some() || !diffs_by_post_diff_path.contains_key(&then_change_key.path)
             {
                 diagnostics.push(Diagnostic {
-                    position: DiagnosticPosition {
-                        path: then_change_key.path.clone(),
-                        start_line: block_range.as_ref().map(|range| range.start),
-                        end_line: block_range.as_ref().map(|range| range.end),
-                    },
+                    path: then_change_key.path.clone(),
+                    start_line: block_range.as_ref().map(|range| range.start),
+                    end_line: block_range.as_ref().map(|range| range.end),
                     message: format!(
                         "expected change here due to change in {}",
                         DiagnosticPosition {
-                            path: ictc_block.key.path.clone(),
+                            path: &ictc_block.key.path,
                             start_line: Some(ictc_block.content_range().start),
                             end_line: Some(ictc_block.content_range().end),
                         },
