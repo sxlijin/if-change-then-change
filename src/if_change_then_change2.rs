@@ -10,6 +10,8 @@ enum ParseState {
     IfChange(usize, BlockNodeBuilder),
     // then-change records the line number where we switched to then-change parsing
     ThenChange(usize, BlockNodeBuilder),
+    // then-change records the line number where we switched to then-change parsing
+    ThenChangeInvalid(usize),
 }
 
 enum LineType<'a> {
@@ -221,11 +223,12 @@ impl<'a> Parser<'a> {
                     }
                     LineType::ThenChangeBlockStart => {
                         self.record_error(i, "then-change must close an if-change, but found no such if-change");
+                        self.parse_state = ParseState::ThenChangeInvalid(i);
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
                         self.record_error(
                                 i,
-                                "end-change must match an if-change and then-change, but found no matching if-change or then-change",
+                                "end-change must close an if-change and then-change, but found neither",
                             );
                     }
                 },
@@ -234,7 +237,7 @@ impl<'a> Parser<'a> {
                     LineType::IfChange => {
                         self.record_error(
                             i_if,
-                            "if-change must match a then-change, but found none",
+                            "if-change must be closed by a then-change, but found no such then-change",
                         );
                         self.record_error(i, "if-change may not be nested in another if-change");
 
@@ -267,20 +270,23 @@ impl<'a> Parser<'a> {
                         self.record_error(
                             i, 
                             format!(
-                                "end-change must match an if-change and then-change, but no matching then-change was found (matches if-change on line {})",
-                                "??????"
+                                "end-change must close an if-change and then-change, but found no such then-change (found if-change on line {})",
+                                i_if + 1
                             )
                         );
                     }
                 },
                 ParseState::ThenChange(i_then, ref mut builder) => match line_type {
                     LineType::SourceCode => {
-                        builder.then_change_push((
-                            i,
-                            BlockKey::new(line.trim_matches(|ch: char| {
+                        let path = line.trim_matches(|ch: char| {
                                 ch.is_ascii_punctuation() || ch.is_ascii_whitespace()
-                            })),
-                        ));
+                            });
+
+                        if path.is_empty() {
+                            // TODO - need to record a diagnostic here
+                            // self.record_error(i, "no valid path found for then-change");
+                        }
+                        builder.then_change_push(( i, BlockKey::new(path)));
                     }
                     LineType::IfChange => {
                         self.record_error(
@@ -322,6 +328,28 @@ impl<'a> Parser<'a> {
                         self.parse_state = ParseState::NoOp;
                     }
                 },
+                // We record the error for the invalid then-change on line i_then when we transition into ThenChangeInvalid
+                ParseState::ThenChangeInvalid(i_then) => match line_type {
+                    LineType::SourceCode => {}
+                    LineType::IfChange => {
+                        let mut builder = BlockNodeBuilder::default();
+                        builder.key(BlockKey::new(self.input_path));
+                        builder.if_change_lineno(i);
+
+                        self.parse_state = ParseState::IfChange(i, builder);
+                    }
+                    LineType::ThenChangeInline(_) => {
+                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
+                    }
+                    LineType::ThenChangeBlockStart => {
+                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
+                    }
+                    LineType::EndChangeAkaThenChangeBlockEnd => {
+                        // Do not record an error here - it would be redundant with the error we
+                        // surfaced when we entered ThenChangeInvalid
+                        self.parse_state = ParseState::NoOp;
+                    }
+                },
             }
         }
 
@@ -342,7 +370,13 @@ impl<'a> Parser<'a> {
                 // since showing a lot of "'c = a + b' is not a file" errors would be pure spam).
                 self.record_error(
                     i,
-                    format!("then-change must be closed by an end-change, but found no such end-change")
+                    "then-change must be closed by an end-change, but found no such end-change"
+                );
+            }
+            ParseState::ThenChangeInvalid(i) => {
+                self.record_error(
+                    i,
+                    "then-change must be closed by an end-change, but found no such end-change"
                 );
             }
         }

@@ -1,8 +1,13 @@
 lorem
+# if-change
 ipsum
 # if-change
 dolor
+# then-change if-change.foo
+
 # if-change
 sit
 amet
 # then-change
+if-change2.foo
+# end-change

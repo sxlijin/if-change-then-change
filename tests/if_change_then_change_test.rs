@@ -38,6 +38,27 @@ fn malformed_syntax() -> anyhow::Result<()> {
     assert_eq!(
         run.stdout,
         "\
+tests/data/malformed/if-change-then-end-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
+tests/data/malformed/if-change-then-end-change.foo:5 - end-change must close an if-change and then-change, but found no such then-change (found if-change on line 2)
+tests/data/malformed/if-change-then-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
+tests/data/malformed/if-change-then-if-change.foo:4 - if-change may not be nested in another if-change
+tests/data/malformed/nested-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
+tests/data/malformed/nested-if-change.foo:4 - if-change may not be nested in another if-change
+tests/data/malformed/nested-if-change.foo:7 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/orphaned-end-change.foo:4 - end-change must close an if-change and then-change, but found neither
+tests/data/malformed/orphaned-then-change-block-terminated.foo:4 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/orphaned-then-change-block-unterminated.foo:4 - then-change must be closed by an end-change, but found no such end-change
+tests/data/malformed/orphaned-then-change-block-unterminated.foo:4 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/orphaned-then-change-inline.foo:4 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/then-change-into-if-change.foo:4 - then-change must match an end-change, but found none
+tests/data/malformed/then-change-into-if-change.foo:5 - if-change must be closed by a then-change, but found no such then-change
+tests/data/malformed/then-change-into-if-change.foo:7 - end-change must close an if-change and then-change, but found no such then-change (found if-change on line 5)
+tests/data/malformed/then-change-into-then-change-block.foo:4 - then-change must be closed by an end-change, but found no such end-change
+tests/data/malformed/then-change-into-then-change-block.foo:6 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/then-change-into-then-change-inline.foo:4 - then-change must be closed by an end-change, but found no such end-change
+tests/data/malformed/then-change-into-then-change-inline.foo:5 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/unterminated-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
+tests/data/malformed/unterminated-then-change.foo:6 - then-change must be closed by an end-change, but found no such end-change
 "
     );
     assert_eq!(run.exit_code, 0);
