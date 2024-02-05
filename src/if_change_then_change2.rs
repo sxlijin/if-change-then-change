@@ -137,6 +137,20 @@ impl<'a> Parser<'a> {
     ///   - to maximize error readability, lines are classified into types of input _independently_
     ///     of the current state of the state machine, and each input type must then be explicitly
     ///     handled according to the current state of the state machine
+    /// 
+    /// ## Open questions
+    /// 
+    ///   - Error message copy. A lot of errors take one of these two forms:
+    /// 
+    ///       - "$clause must close $other-clause, but found no $other-clause to close"
+    ///       - "$clause must be closed by $other-clause, but found no such $other-clause"
+    /// 
+    ///     I don't love this copy, in part because they it isn't explicit about what the
+    ///     corrective action should be. I was hoping to land on something like:
+    /// 
+    ///       - "$clause must be closed by $other-clause, please add an $other-clause"
+    /// 
+    ///     but I like that copy even less. Would like to revisit this in the future.
     ///
     /// ## Edge case handling
     ///
@@ -219,10 +233,10 @@ impl<'a> Parser<'a> {
                         self.parse_state = ParseState::IfChange(i, builder);
                     }
                     LineType::ThenChangeInline(_) => {
-                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
+                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
                     }
                     LineType::ThenChangeBlockStart => {
-                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
+                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
                         self.parse_state = ParseState::ThenChangeInvalid(i);
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
@@ -270,7 +284,7 @@ impl<'a> Parser<'a> {
                         self.record_error(
                             i, 
                             format!(
-                                "end-change must close an if-change and then-change, but found no such then-change (found if-change on line {})",
+                                "end-change must close an if-change and then-change, but found no then-change to close (found if-change on line {})",
                                 i_if + 1
                             )
                         );
@@ -291,7 +305,7 @@ impl<'a> Parser<'a> {
                     LineType::IfChange => {
                         self.record_error(
                             i_then,
-                            "then-change must match an end-change, but found none",
+                            "then-change must be closed by an end-change, but found no such end-change",
                         );
 
                         let mut builder = BlockNodeBuilder::default();
@@ -305,14 +319,14 @@ impl<'a> Parser<'a> {
                             i_then,
                             "then-change must be closed by an end-change, but found no such end-change",
                         );
-                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
+                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
                     }
                     LineType::ThenChangeBlockStart => {
                         self.record_error(
                             i_then,
                             "then-change must be closed by an end-change, but found no such end-change",
                         );
-                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
+                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
                         builder.end_change_lineno(i);
@@ -328,8 +342,9 @@ impl<'a> Parser<'a> {
                         self.parse_state = ParseState::NoOp;
                     }
                 },
-                // We record the error for the invalid then-change on line i_then when we transition into ThenChangeInvalid
-                ParseState::ThenChangeInvalid(i_then) => match line_type {
+                // We record the error for the invalid then-change on line i_then when we
+                // transition into ThenChangeInvalid
+                ParseState::ThenChangeInvalid(_) => match line_type {
                     LineType::SourceCode => {}
                     LineType::IfChange => {
                         let mut builder = BlockNodeBuilder::default();
@@ -339,14 +354,14 @@ impl<'a> Parser<'a> {
                         self.parse_state = ParseState::IfChange(i, builder);
                     }
                     LineType::ThenChangeInline(_) => {
-                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
+                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
                     }
                     LineType::ThenChangeBlockStart => {
-                        self.record_error(i, "then-change must close an if-change, but found no such if-change");
+                        self.record_error(i, "then-change must close an if-change, but found no if-change to close");
                     }
                     LineType::EndChangeAkaThenChangeBlockEnd => {
                         // Do not record an error here - it would be redundant with the error we
-                        // surfaced when we entered ThenChangeInvalid
+                        // recorded when we entered ThenChangeInvalid.
                         self.parse_state = ParseState::NoOp;
                     }
                 },

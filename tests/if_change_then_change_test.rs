@@ -39,24 +39,24 @@ fn malformed_syntax() -> anyhow::Result<()> {
         run.stdout,
         "\
 tests/data/malformed/if-change-then-end-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
-tests/data/malformed/if-change-then-end-change.foo:5 - end-change must close an if-change and then-change, but found no such then-change (found if-change on line 2)
+tests/data/malformed/if-change-then-end-change.foo:5 - end-change must close an if-change and then-change, but found no then-change to close (found if-change on line 2)
 tests/data/malformed/if-change-then-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
 tests/data/malformed/if-change-then-if-change.foo:4 - if-change may not be nested in another if-change
 tests/data/malformed/nested-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
 tests/data/malformed/nested-if-change.foo:4 - if-change may not be nested in another if-change
-tests/data/malformed/nested-if-change.foo:7 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/nested-if-change.foo:7 - then-change must close an if-change, but found no if-change to close
 tests/data/malformed/orphaned-end-change.foo:4 - end-change must close an if-change and then-change, but found neither
-tests/data/malformed/orphaned-then-change-block-terminated.foo:4 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/orphaned-then-change-block-terminated.foo:4 - then-change must close an if-change, but found no if-change to close
 tests/data/malformed/orphaned-then-change-block-unterminated.foo:4 - then-change must be closed by an end-change, but found no such end-change
-tests/data/malformed/orphaned-then-change-block-unterminated.foo:4 - then-change must close an if-change, but found no such if-change
-tests/data/malformed/orphaned-then-change-inline.foo:4 - then-change must close an if-change, but found no such if-change
-tests/data/malformed/then-change-into-if-change.foo:4 - then-change must match an end-change, but found none
+tests/data/malformed/orphaned-then-change-block-unterminated.foo:4 - then-change must close an if-change, but found no if-change to close
+tests/data/malformed/orphaned-then-change-inline.foo:4 - then-change must close an if-change, but found no if-change to close
+tests/data/malformed/then-change-into-if-change.foo:4 - then-change must be closed by an end-change, but found no such end-change
 tests/data/malformed/then-change-into-if-change.foo:5 - if-change must be closed by a then-change, but found no such then-change
-tests/data/malformed/then-change-into-if-change.foo:7 - end-change must close an if-change and then-change, but found no such then-change (found if-change on line 5)
+tests/data/malformed/then-change-into-if-change.foo:7 - end-change must close an if-change and then-change, but found no then-change to close (found if-change on line 5)
 tests/data/malformed/then-change-into-then-change-block.foo:4 - then-change must be closed by an end-change, but found no such end-change
-tests/data/malformed/then-change-into-then-change-block.foo:6 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/then-change-into-then-change-block.foo:6 - then-change must close an if-change, but found no if-change to close
 tests/data/malformed/then-change-into-then-change-inline.foo:4 - then-change must be closed by an end-change, but found no such end-change
-tests/data/malformed/then-change-into-then-change-inline.foo:5 - then-change must close an if-change, but found no such if-change
+tests/data/malformed/then-change-into-then-change-inline.foo:5 - then-change must close an if-change, but found no if-change to close
 tests/data/malformed/unterminated-if-change.foo:2 - if-change must be closed by a then-change, but found no such then-change
 tests/data/malformed/unterminated-then-change.foo:6 - then-change must be closed by an end-change, but found no such end-change
 "
@@ -422,3 +422,4 @@ tests/data/5-files/release-stress.sh:2-10 - expected change here due to change i
 // TODO- add test case for LFS diff
 // TODO- validate that diffs match the current state of the file
 // TODO- add tests for malformed ictc blocks
+// TODO- add malformed/then-change-into-invalid-paths handling
