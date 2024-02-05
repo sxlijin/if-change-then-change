@@ -150,7 +150,7 @@ impl<'a> Parser<'a> {
     /// 
     ///       - "$clause must be closed by $other-clause, please add an $other-clause"
     /// 
-    ///     but I like that copy even less. Would like to revisit this in the future.
+    ///     but I like that copy even less.
     ///
     /// ## Edge case handling
     ///
