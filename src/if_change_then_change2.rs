@@ -85,12 +85,14 @@ impl<'a> Parser<'a> {
         None
     }
 
-    fn line_type(line: &'a str) -> LineType<'a> {
+    fn line_type(&mut self, i: usize, line: &'a str) -> LineType<'a> {
         if let Some((prefix, suffix)) = line.split_once("if-change") {
             if Parser::is_comment_prefix(prefix) {
                 if let Some(label) = Parser::comment_suffix_label(suffix) {
                     if !label.is_empty() {
-                        // TODO- record diagnostic
+                        self.record_error(
+                            i,
+                            format!("if-change has label '{}', but if-change statements may not be labelled", label));
                     }
                     return LineType::IfChange;
                 }
@@ -112,7 +114,9 @@ impl<'a> Parser<'a> {
             if Parser::is_comment_prefix(prefix) {
                 if let Some(label) = Parser::comment_suffix_label(suffix) {
                     if !label.is_empty() {
-                        // TODO- record diagnostic
+                        self.record_error(
+                            i,
+                            format!("end-change has label '{}', but end-change statements may not be labelled", label));
                     }
                     return LineType::EndChangeAkaThenChangeBlockEnd;
                 }
@@ -243,7 +247,7 @@ impl<'a> Parser<'a> {
     ///     
     fn parse(mut self) -> Result<Vec<BlockNode>, Vec<Diagnostic>> {
         for (i, line) in self.input_content.lines().enumerate() {
-            let line_type = Self::line_type(line);
+            let line_type = self.line_type(i, line);
             match self.parse_state {
                 ParseState::NoOp => {
                     match line_type {
@@ -1050,6 +1054,33 @@ mod test {
             then_change_lineno: 52,
             end_change_lineno: 54,
         });
+
+        Ok(())
+    }
+
+    #[test]
+    fn error_when_if_change_end_change_have_labels() -> anyhow::Result<()> {
+        let parsed = FileNode::from_str(
+            "if-change.foo",
+            "\
+lorem
+ipsum
+# if-change fizzbuzz
+dolor
+# then-change
+# then-change.foo
+# end-change foobar
+sit
+amet
+",
+        );
+        assert_that!(parsed).is_err();
+        assert_that!(parsed.unwrap_err().to_string().as_str()).is_equal_to(
+            "\
+if-change.foo:3 - if-change has label 'fizzbuzz', but if-change statements may not be labelled
+if-change.foo:7 - end-change has label 'foobar', but end-change statements may not be labelled
+",
+        );
 
         Ok(())
     }
