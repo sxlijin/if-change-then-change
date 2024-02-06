@@ -3,4 +3,5 @@ echo "indexing library catalogs"
 # if-change
 echo "serving from s3://bookshop-catalogs/ and s3://library-catalogs/"
 # then-change tests/data/diff-has-path-changes/g1.sh
-echo "service started on port 0000"
+echo "service config has changed"
+echo "service started on port 0001"
