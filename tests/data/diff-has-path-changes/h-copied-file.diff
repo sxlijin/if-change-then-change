@@ -1,0 +1,4 @@
+diff --git a/tests/data/diff-has-path-changes/h2.sh b/tests/data/diff-has-path-changes/h2b.sh
+similarity index 100%
+copy from tests/data/diff-has-path-changes/h2.sh
+copy to tests/data/diff-has-path-changes/h2b.sh
