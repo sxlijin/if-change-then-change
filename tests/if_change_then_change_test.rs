@@ -432,5 +432,4 @@ tests/data/5-files/release-stress.sh:2-10 - expected change here due to change i
 
 // TODO- add test case for LFS diff
 // TODO- validate that diffs match the current state of the file
-// TODO- add tests for malformed ictc blocks
 // TODO- add malformed/then-change-into-invalid-paths handling
