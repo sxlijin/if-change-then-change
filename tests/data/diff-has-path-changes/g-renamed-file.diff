@@ -1,4 +1,0 @@
-diff --git a/tests/data/diff-has-path-changes/g2.sh b/tests/data/diff-has-path-changes/g3.sh
-similarity index 100%
-rename from tests/data/diff-has-path-changes/g2.sh
-rename to tests/data/diff-has-path-changes/g3.sh
