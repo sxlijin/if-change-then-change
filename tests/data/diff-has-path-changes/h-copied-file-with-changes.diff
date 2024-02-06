@@ -1,0 +1,16 @@
+diff --git a/tests/data/diff-has-path-changes/h2.sh b/tests/data/diff-has-path-changes/h2c.sh
+similarity index 74%
+copy from tests/data/diff-has-path-changes/h2.sh
+copy to tests/data/diff-has-path-changes/h2c.sh
+index 9e5ae16..a2a94de 100644
+--- a/tests/data/diff-has-path-changes/h2.sh
++++ b/tests/data/diff-has-path-changes/h2c.sh
+@@ -1,6 +1,7 @@
+ echo "indexing bookshop catalogs"
+ echo "indexing library catalogs"
++echo "moving indexes to replica C"
+ # if-change
+ echo "serving from s3://bookshop-catalogs/ and s3://library-catalogs/"
+ # then-change tests/data/diff-has-path-changes/h1.sh
+-echo "service started on port 0000"
++echo "service started on port 0001"
