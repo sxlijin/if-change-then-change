@@ -330,8 +330,55 @@ should complain that f1.sh ictc is now orphaned
 
 #[test]
 #[ignore]
-fn renamed_file() -> anyhow::Result<()> {
-    let run = framework::run_tool("tests/data/diff-has-path-changes/g-renamed-file.diff")?;
+fn renamed_file_no_changes() -> anyhow::Result<()> {
+    let run =
+        framework::run_tool("tests/data/diff-has-path-changes/g-renamed-file-no-changes.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+g1.sh:5 - then-change points at g2.sh, but g2.sh was deleted
+"
+    );
+    // may need spectral for this
+    assert!(!run.stdout.contains("g3.sh:5 - g1.sh was not modified"));
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+fn unidiff_test() -> anyhow::Result<()> {
+    let diff =
+        std::fs::read_to_string("tests/data/diff-has-path-changes/g-renamed-file-no-changes.diff")?;
+
+    let mut patch_set = unidiff::PatchSet::new();
+    patch_set.parse(diff).ok().expect("Error parsing diff");
+
+    for patched_file in patch_set {
+        // do something with patched_file
+        log::info!("patched_file: {}", patched_file.source_file);
+        log::info!("patched_file: {:?}", patched_file.source_timestamp);
+        log::info!("patched_file: {}", patched_file.target_file);
+        log::info!("patched_file: {:?}", patched_file.target_timestamp);
+        for hunk in patched_file {
+            // do something with hunk
+            log::info!("hunk: {}", hunk.section_header);
+            for line in hunk {
+                // do something with line
+                log::info!("line: {}", line.diff_line_no);
+            }
+        }
+    }
+
+    Err(anyhow::anyhow!("induce failure"))
+}
+
+#[test]
+#[ignore]
+fn renamed_file_with_changes() -> anyhow::Result<()> {
+    let run =
+        framework::run_tool("tests/data/diff-has-path-changes/g-renamed-file-with-changes.diff")?;
 
     assert_eq!(
         run.stdout,
@@ -348,8 +395,26 @@ g1.sh:5 - then-change points at g2.sh, but g2.sh was deleted
 
 #[test]
 #[ignore]
-fn copied_file() -> anyhow::Result<()> {
-    let run = framework::run_tool("tests/data/diff-has-path-changes/h-copied-file.diff")?;
+fn copied_file_no_changes() -> anyhow::Result<()> {
+    let run =
+        framework::run_tool("tests/data/diff-has-path-changes/h-copied-file-no-changes.diff")?;
+
+    assert_eq!(
+        run.stdout,
+        "\
+still need to decide what'll go here
+"
+    );
+    assert_eq!(run.exit_code, 0);
+
+    Ok(())
+}
+
+#[test]
+#[ignore]
+fn copied_file_with_changes() -> anyhow::Result<()> {
+    let run =
+        framework::run_tool("tests/data/diff-has-path-changes/h-copied-file-with-changes.diff")?;
 
     assert_eq!(
         run.stdout,

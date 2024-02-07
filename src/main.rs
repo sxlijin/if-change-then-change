@@ -23,6 +23,7 @@ fn run() -> Result<()> {
         let is_git_diff = input.starts_with("diff --git");
 
         let mut patch_set = unidiff::PatchSet::new();
+        // TODO- we should error more usefully if this happens
         patch_set.parse(input).ok().expect("Error parsing diff");
 
         (patch_set, is_git_diff)
